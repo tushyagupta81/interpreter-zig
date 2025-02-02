@@ -6,6 +6,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
 
 ## Current progress
 - [x] How to read a file
+- [x] Using the gpa allocator
+- [x] REPL mode working
 - [ ] Make a repl
 - [ ] Basic Parser
 - [ ] Setup a environment

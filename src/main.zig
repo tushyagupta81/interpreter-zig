@@ -1,9 +1,8 @@
 const std = @import("std");
 const stdout = std.io.getStdOut().writer();
+const stdin = std.io.getStdIn().reader();
 
-fn run_file(file_path: []const u8) !void {
-    try stdout.print("This is a file mode, file = {s}\n", .{file_path});
-
+fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const file = std.fs.cwd().openFile(file_path, .{}) catch |err| {
         if (err == std.fs.File.OpenError.FileNotFound) {
             try stdout.print("File not found!\n", .{});
@@ -15,32 +14,40 @@ fn run_file(file_path: []const u8) !void {
     };
     defer file.close();
 
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var in_stream = buf_reader.reader();
+    const file_size = (try file.stat()).size;
+    const contents = try file.readToEndAlloc(allocator, file_size);
+    defer allocator.free(contents);
 
-    var buf: [1024]u8 = undefined;
-    while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        try stdout.print("{s}\n", .{line});
-    }
+    try stdout.print("{s}", .{contents});
 }
 
-fn run_promt() !void {
+fn run_promt(allocator: std.mem.Allocator) !void {
     try stdout.print("repl mode\n", .{});
+    while (true) {
+        try stdout.print("> ", .{});
+        const line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse "";
+        defer allocator.free(line);
+        if (std.mem.eql(u8, line, "") or std.mem.eql(u8, line, "exit")) {
+            try stdout.print("\nExiting program\n", .{});
+            break;
+        }
+    }
 }
 
 pub fn main() !void {
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer gpa.deinit();
-    // const allocator = gpa.allocator();
-    var args = std.process.args();
-    if (args.inner.count > 3) {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    if (args.len > 2) {
         try stdout.print("Usage: tox <file_path>", .{});
         std.process.exit(64);
-    }
-    _ = args.next().?;
-    if (args.next()) |arg| {
-        try run_file(arg);
+    } else if (args.len == 2) {
+        try run_file(allocator, args[1]);
     } else {
-        try run_promt();
+        try run_promt(allocator);
     }
 }
