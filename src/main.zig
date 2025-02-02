@@ -2,6 +2,33 @@ const std = @import("std");
 const stdout = std.io.getStdOut().writer();
 const stdin = std.io.getStdIn().reader();
 
+const Scanner = @import("./scanner.zig").Scanner;
+
+pub var has_err: bool = false;
+
+pub fn base_error(line: u32, msg: []const u8) !void {
+    try report(line, "", msg);
+}
+
+pub fn report(line: u32, where: []u8, msg: []const u8) !void {
+    try stdout.print("[line {}] Error {s}: {s}\n", .{ line, where, msg });
+    has_err = true;
+}
+
+fn run(source: []u8, allocator: std.mem.Allocator) !void {
+    var scanner = Scanner.init(allocator, source);
+    defer scanner.deinit();
+    const tokens = try scanner.scan_tokens();
+    for (tokens.items) |tk| {
+        const token_to_string = try tk.to_string(allocator);
+        defer allocator.free(token_to_string);
+        try stdout.print("{s}", .{token_to_string});
+    }
+    // if (has_err) {
+    //     std.process.exit(64);
+    // }
+}
+
 fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const file = std.fs.cwd().openFile(file_path, .{}) catch |err| {
         if (err == std.fs.File.OpenError.FileNotFound) {
@@ -18,19 +45,20 @@ fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const contents = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(contents);
 
-    try stdout.print("{s}", .{contents});
+    try run(contents, allocator);
 }
 
 fn run_promt(allocator: std.mem.Allocator) !void {
     try stdout.print("repl mode\n", .{});
     while (true) {
-        try stdout.print("> ", .{});
-        const line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse "";
+        try stdout.print("\n> ", .{});
+
+        const line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse break;
         defer allocator.free(line);
-        if (std.mem.eql(u8, line, "") or std.mem.eql(u8, line, "exit")) {
-            try stdout.print("\nExiting program\n", .{});
-            break;
-        }
+
+        try run(line, allocator);
+
+        if (std.mem.eql(u8, line, "") or std.mem.eql(u8, line, "exit")) break;
     }
 }
 

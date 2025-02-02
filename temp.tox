@@ -1,3 +1,10 @@
-hello world
-this is the 2nd line
-this is the 3rd
+// this is a comment
+(( )){} // grouping stuff
+!*+-/=<> <= == // operators
+
+/*
+this is a
+multi line comment
+and should not affect how
+this works"fs4!${}{]()(
+*/

@@ -8,7 +8,10 @@ The rust borrow checker made the way of making the interpreter feel like hell
 - [x] How to read a file
 - [x] Using the gpa allocator
 - [x] REPL mode working
-- [ ] Make a repl
+- [x] Tokens
+- [x] Scanner
+    - [x] Challenge
+        - Multiline comments
 - [ ] Basic Parser
 - [ ] Setup a environment
 - [ ] Interpreter
@@ -19,4 +22,6 @@ The rust borrow checker made the way of making the interpreter feel like hell
 
 Before doing the interpreter in rust I was hesitant to chose which one and in the end choose rust\
 I enjoy rust but i after doing some complex things in it I felt like I was being held back\
-Most probabaly this is a skill issue and my way of thinking in OOP's mentality
+Most probabaly this is a skill issue and my way of thinking in OOP's mentality\
+
+###### P.S. I am really enjoying it rn :)
