@@ -3,11 +3,27 @@ const stdout = std.io.getStdOut().writer();
 const stdin = std.io.getStdIn().reader();
 
 const Scanner = @import("./scanner.zig").Scanner;
+const Token = @import("./token.zig").Token;
+const TokenType = @import("./token.zig").TokenType;
+const Parser = @import("./parser.zig").Parser;
+const ExprType = @import("./expr.zig");
+const to_string = @import("./expr.zig").to_string;
+const LiteralValue = @import("./token.zig").LiteralValue;
 
 pub var has_err: bool = false;
 
 pub fn base_error(line: u32, msg: []const u8) !void {
     try report(line, "", msg);
+}
+
+pub fn parse_error(token: Token, msg: []const u8, allocator: std.mem.Allocator) !void {
+    if (token.type == TokenType.Eof) {
+        const buf = try std.fmt.allocPrint(allocator, "at end", .{});
+        try report(token.line, buf, msg);
+    } else {
+        const buf = try std.fmt.allocPrint(allocator, "at '{s}'", .{token.lexeme});
+        try report(token.line, buf, msg);
+    }
 }
 
 pub fn report(line: u32, where: []u8, msg: []const u8) !void {
@@ -19,11 +35,43 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     var scanner = Scanner.init(allocator, source);
     defer scanner.deinit();
     const tokens = try scanner.scan_tokens();
-    for (tokens.items) |tk| {
-        const token_to_string = try tk.to_string(allocator);
-        defer allocator.free(token_to_string);
-        try stdout.print("{s}", .{token_to_string});
-    }
+    // for (tokens.items) |tk| {
+    //     const token_to_string = try tk.to_string(allocator);
+    //     defer allocator.free(token_to_string);
+    //     try stdout.print("{s}", .{token_to_string});
+    // }
+    var parser = Parser.init(allocator, tokens);
+    // defer parser.deinit();
+
+    var exprs = try parser.parse();
+    defer _ = exprs.deinit();
+
+    var hell = ExprType.Expr{
+        .literal = .{
+            .value = LiteralValue{
+                .Float = 1.0,
+            },
+        },
+    };
+    const test_ = ExprType.Expr{
+        .grouping = .{ .expression = &hell },
+    };
+    var def = std.ArrayList([]const u8).init(allocator);
+    std.debug.print("{s}", .{try to_string(test_, allocator, &def)});
+
+    // for (exprs.items) |expr| {
+    //     var def = std.ArrayList([]const u8).init(allocator);
+    //     const res = try to_string(expr, allocator, &def);
+    //     defer {
+    //         for (def.items) |de| {
+    //             allocator.free(de);
+    //         }
+    //     }
+    //     // defer allocator.free(res);
+    //
+    //     try stdout.print("{any}", .{res});
+    // }
+
     // if (has_err) {
     //     std.process.exit(64);
     // }
@@ -56,9 +104,9 @@ fn run_promt(allocator: std.mem.Allocator) !void {
         const line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse break;
         defer allocator.free(line);
 
-        try run(line, allocator);
-
         if (std.mem.eql(u8, line, "") or std.mem.eql(u8, line, "exit")) break;
+
+        try run(line, allocator);
     }
 }
 
