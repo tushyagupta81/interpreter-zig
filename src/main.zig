@@ -42,20 +42,19 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     // }
     // try stdout.print("\n\n\n", .{});
 
-    var parser = Parser.init(allocator, tokens);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const arenaAlloc = arena.allocator();
+
+    var parser = Parser.init(arenaAlloc, tokens);
 
     const exprs = try parser.parse();
     defer exprs.deinit();
+
     for (exprs.items) |expr| {
-        const res = try expr.to_string(@constCast(&allocator));
-        defer allocator.free(res);
-
-        try stdout.print("{s}", .{res});
+        const res = try expr.to_string(@constCast(&arenaAlloc));
+        try stdout.print("{s}\n", .{res});
     }
-
-    // if (has_err) {
-    //     std.process.exit(64);
-    // }
 }
 
 fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {

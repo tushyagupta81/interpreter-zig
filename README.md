@@ -12,6 +12,12 @@ The rust borrow checker made the way of making the interpreter feel like hell
 - [x] Scanner
     - [x] Challenge
         - Multiline comments
+- [x] Parser
+    - [x] Temp hack - Using arena allocator to help memory release
+    - [ ] Challenge
+        - [ ] Implement Comma operator from C and C++
+        - [ ] Ternary operator
+        - [ ] Detect a Binary operation with a missing left hand operator
 - [ ] Basic Parser
 - [ ] Setup a environment
 - [ ] Interpreter
