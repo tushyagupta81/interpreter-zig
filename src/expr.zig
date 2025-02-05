@@ -32,42 +32,38 @@ pub const Expr = union(enum) {
 
     binary: struct {
         left: *Expr,
-        op: *Token,
+        op: Token,
         right: *Expr,
     },
     grouping: struct {
         expression: *Expr,
     },
     unary: struct {
-        op: *Token,
+        op: Token,
         right: *Expr,
     },
     literal: struct {
         value: LiteralValue,
     },
-};
 
-pub fn to_string(expr_: Expr, allocator: std.mem.Allocator, def: *std.ArrayList([]const u8)) ![]const u8 {
-    switch (expr_) {
-        Expr.binary => |expr| {
-            const res = try std.fmt.allocPrint(allocator, "( {s} {s} {s} )", .{ try to_string(expr.left.*, allocator, def), expr.op.lexeme, try to_string(expr.right.*, allocator, def) });
-            try def.append(res);
-            return res;
-        },
-        Expr.grouping => |expr| {
-            const res = try std.fmt.allocPrint(allocator, "(group {s})", .{try to_string(expr.expression.*, allocator, def)});
-            try def.append(res);
-            return res;
-        },
-        Expr.unary => |expr| {
-            const res = try std.fmt.allocPrint(allocator, "( {s} {s} )", .{ expr.op.lexeme, try to_string(expr.right.*, allocator, def) });
-            try def.append(res);
-            return res;
-        },
-        Expr.literal => |expr| {
-            const res = try std.fmt.allocPrint(allocator, "{s}", .{@tagName(expr.value)});
-            try def.append(res);
-            return res;
-        },
+    pub fn to_string(expr: Expr, allocator: *std.mem.Allocator) ![]u8 {
+        switch (expr) {
+            Expr.binary => |e| {
+                const res = try std.fmt.allocPrint(allocator.*, "( {s} {s} {s} )", .{ try e.left.to_string(allocator), e.op.lexeme, try e.right.to_string(allocator) });
+                return res;
+            },
+            Expr.grouping => |e| {
+                const res = try std.fmt.allocPrint(allocator.*, "(group {s})", .{try e.expression.to_string(allocator)});
+                return res;
+            },
+            Expr.unary => |e| {
+                const res = try std.fmt.allocPrint(allocator.*, "( {s} {s} )", .{ e.op.lexeme, try e.right.*.to_string(allocator) });
+                return res;
+            },
+            Expr.literal => |e| {
+                const res = try std.fmt.allocPrint(allocator.*, "{s}", .{try e.value.to_string(allocator)});
+                return res;
+            },
+        }
     }
-}
+};

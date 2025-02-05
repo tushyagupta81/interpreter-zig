@@ -51,10 +51,28 @@ pub const TokenType = enum {
 };
 
 pub const LiteralValue = union(enum) {
+    const Self = @This();
     Float: f64,
     String: []u8,
     Bool: bool,
     Nil: void,
+
+    pub fn to_string(self: LiteralValue, allocator: *std.mem.Allocator) ![]const u8 {
+        switch (self) {
+            LiteralValue.Float => {
+                return try std.fmt.allocPrint(allocator.*, "{d}", .{self.Float});
+            },
+            LiteralValue.String => return self.String,
+            LiteralValue.Bool => |v| {
+                if (v) {
+                    return &[_]u8{ 't', 'r', 'u', 'e' };
+                } else {
+                    return &[_]u8{ 'f', 'a', 'l', 's', 'e' };
+                }
+            },
+            LiteralValue.Nil => return &[_]u8{ 'N', 'i', 'l' },
+        }
+    }
 };
 
 pub const Token = struct {
@@ -65,11 +83,11 @@ pub const Token = struct {
     literal: ?LiteralValue,
     line: u32,
 
-    pub fn to_string(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
+    pub fn to_string(self: *const Self, allocator: *std.mem.Allocator) ![]u8 {
         if (self.literal) |lit| {
-            return try std.fmt.allocPrint(allocator, "{s} {s} {s}\n", .{ @tagName(self.type), self.lexeme, @tagName(lit) });
+            return try std.fmt.allocPrint(allocator.*, "{s} {s} {s}\n", .{ @tagName(self.type), self.lexeme, @tagName(lit) });
         } else {
-            return try std.fmt.allocPrint(allocator, "{s} {s}\n", .{ @tagName(self.type), self.lexeme });
+            return try std.fmt.allocPrint(allocator.*, "{s} {s}\n", .{ @tagName(self.type), self.lexeme });
         }
     }
 };

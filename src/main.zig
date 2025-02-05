@@ -40,37 +40,18 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     //     defer allocator.free(token_to_string);
     //     try stdout.print("{s}", .{token_to_string});
     // }
+    // try stdout.print("\n\n\n", .{});
+
     var parser = Parser.init(allocator, tokens);
-    // defer parser.deinit();
 
-    var exprs = try parser.parse();
-    defer _ = exprs.deinit();
+    const exprs = try parser.parse();
+    defer exprs.deinit();
+    for (exprs.items) |expr| {
+        const res = try expr.to_string(@constCast(&allocator));
+        defer allocator.free(res);
 
-    var hell = ExprType.Expr{
-        .literal = .{
-            .value = LiteralValue{
-                .Float = 1.0,
-            },
-        },
-    };
-    const test_ = ExprType.Expr{
-        .grouping = .{ .expression = &hell },
-    };
-    var def = std.ArrayList([]const u8).init(allocator);
-    std.debug.print("{s}", .{try to_string(test_, allocator, &def)});
-
-    // for (exprs.items) |expr| {
-    //     var def = std.ArrayList([]const u8).init(allocator);
-    //     const res = try to_string(expr, allocator, &def);
-    //     defer {
-    //         for (def.items) |de| {
-    //             allocator.free(de);
-    //         }
-    //     }
-    //     // defer allocator.free(res);
-    //
-    //     try stdout.print("{any}", .{res});
-    // }
+        try stdout.print("{s}", .{res});
+    }
 
     // if (has_err) {
     //     std.process.exit(64);
