@@ -24,6 +24,15 @@ The rust borrow checker made the way of making the interpreter feel like hell
 - [ ] Resolver
 - [ ] ...
 
+## Pitfalls to fix
+
+1. interpreter.zig
+    - [ ] evaluvate_binary -> string concat size limit of 4096
+
+2. token.zig
+    - LiteralValue
+        - [ ] to_string methods size limit of 256
+
 ## Shifted to zig
 
 Before doing the interpreter in rust I was hesitant to chose which one and in the end choose rust\

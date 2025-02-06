@@ -9,6 +9,7 @@ const Parser = @import("./parser.zig").Parser;
 const ExprType = @import("./expr.zig");
 const to_string = @import("./expr.zig").to_string;
 const LiteralValue = @import("./token.zig").LiteralValue;
+const Interpreter = @import("./interpreter.zig").Interpreter;
 
 pub var has_err: bool = false;
 
@@ -51,9 +52,14 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     const exprs = try parser.parse();
     defer exprs.deinit();
 
+    var interpreter = Interpreter.init(allocator);
+
     for (exprs.items) |expr| {
-        const res = try expr.to_string(@constCast(&arenaAlloc));
-        try stdout.print("{s}\n", .{res});
+        var res = std.ArrayList(u8).init(allocator);
+        defer res.deinit();
+        try expr.to_string(&res);
+        try stdout.print("{s}\n", .{res.items});
+        _ = try interpreter.evaluvate(expr);
     }
 }
 

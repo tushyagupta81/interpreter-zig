@@ -57,10 +57,12 @@ pub const LiteralValue = union(enum) {
     Bool: bool,
     Nil: void,
 
-    pub fn to_string(self: LiteralValue, allocator: *std.mem.Allocator) ![]const u8 {
+    pub fn to_string(self: LiteralValue) ![]const u8 {
         switch (self) {
             LiteralValue.Float => {
-                return try std.fmt.allocPrint(allocator.*, "{d}", .{self.Float});
+                var buf: [256]u8 = undefined;
+                return try std.fmt.bufPrint(&buf, "{d}", .{self.Float});
+                // return buf;
             },
             LiteralValue.String => return self.String,
             LiteralValue.Bool => |v| {
