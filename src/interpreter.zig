@@ -71,6 +71,12 @@ pub const Interpreter = struct {
                 TokenType.Less_equal => {
                     return LiteralValue{ .Bool = left.Float <= right.Float };
                 },
+                TokenType.Equal_equal => {
+                    return LiteralValue{ .Bool = self.is_equal(left, right) };
+                },
+                TokenType.Bang_equal => {
+                    return LiteralValue{ .Bool = !self.is_equal(left, right) };
+                },
                 else => try base_error(expr.op.line, "Unexpected character in binary expression"),
             }
         } else if (@intFromEnum(left) == @intFromEnum(LiteralValue.String) and @intFromEnum(right) == @intFromEnum(LiteralValue.String)) {
@@ -94,7 +100,7 @@ pub const Interpreter = struct {
                 return right;
             },
             TokenType.Bang => {
-                return LiteralValue{ .Bool = !self.isTruthy(right) };
+                return LiteralValue{ .Bool = !self.is_truthy(right) };
             },
             else => try base_error(expr.op.line, "Unexpected charecter"),
         }
@@ -102,7 +108,7 @@ pub const Interpreter = struct {
         unreachable;
     }
 
-    fn isTruthy(_: *Self, val: LiteralValue) bool {
+    fn is_truthy(_: *Self, val: LiteralValue) bool {
         switch (val) {
             LiteralValue.Bool => |b| return b,
             LiteralValue.Nil => return false,
@@ -115,5 +121,20 @@ pub const Interpreter = struct {
             },
             LiteralValue.String => return true,
         }
+    }
+
+    fn is_equal(_: *Self, left: LiteralValue, right: LiteralValue) bool {
+        if (@intFromEnum(left) == @intFromEnum(right)) {
+            if (left == LiteralValue.Float) {
+                return left.Float == right.Float;
+            } else if (left == LiteralValue.String) {
+                return std.mem.eql(u8, left.String, right.String);
+            } else if (left == LiteralValue.Bool) {
+                return left.Bool == right.Bool;
+            } else {
+                return true;
+            }
+        }
+        return false;
     }
 };
