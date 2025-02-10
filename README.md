@@ -11,16 +11,18 @@ The rust borrow checker made the way of making the interpreter feel like hell
 - [x] Tokens
 - [x] Scanner
     - [x] Challenge
-        - Multiline comments
+        - [x] Multiline comments
 - [x] Parser
     - [x] Temp hack - Using arena allocator to help memory release
     - [ ] Challenge
         - [ ] Implement Comma operator from C and C++
         - [ ] Ternary operator
-        - [ ] Detect a Binary operation with a missing left hand operator
-- [ ] Basic Parser
-- [ ] Setup a environment
-- [ ] Interpreter
+        - [x] Detect a Binary operation with a missing left hand operator
+- [x] Interpreter
+    - [ ] Challenge
+        - [ ] compare numbers and string(Don't know what it should really do?)
+        - [x] and numbers to string
+        - [x] divide by 0 check
 - [ ] Resolver
 - [ ] ...
 
@@ -31,7 +33,7 @@ The rust borrow checker made the way of making the interpreter feel like hell
 
 2. token.zig
     - LiteralValue
-        - [ ] to_string methods size limit of 256
+        - [ ] to_string methods size limit of 4096
 
 ## Shifted to zig
 

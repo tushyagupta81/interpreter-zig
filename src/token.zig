@@ -60,11 +60,14 @@ pub const LiteralValue = union(enum) {
     pub fn to_string(self: LiteralValue) ![]const u8 {
         switch (self) {
             LiteralValue.Float => {
-                var buf: [256]u8 = undefined;
+                var buf: [4096]u8 = undefined;
                 return try std.fmt.bufPrint(&buf, "{d}", .{self.Float});
                 // return buf;
             },
-            LiteralValue.String => return self.String,
+            LiteralValue.String => {
+                var buf: [4096]u8 = undefined;
+                return try std.fmt.bufPrint(&buf, "\"{s}\"", .{self.String});
+            },
             LiteralValue.Bool => |v| {
                 if (v) {
                     return &[_]u8{ 't', 'r', 'u', 'e' };

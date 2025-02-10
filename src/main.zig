@@ -11,7 +11,8 @@ const to_string = @import("./expr.zig").to_string;
 const LiteralValue = @import("./token.zig").LiteralValue;
 const Interpreter = @import("./interpreter.zig").Interpreter;
 
-pub var has_err: bool = false;
+var has_err: bool = false;
+var runtime_err: bool = false;
 
 pub fn base_error(line: u32, msg: []const u8) !void {
     try report(line, "", msg);
@@ -25,6 +26,11 @@ pub fn parse_error(token: Token, msg: []const u8, allocator: std.mem.Allocator) 
         const buf = try std.fmt.allocPrint(allocator, "at '{s}'", .{token.lexeme});
         try report(token.line, buf, msg);
     }
+}
+
+pub fn runtime_error(line: u32, msg: []const u8) !void {
+    try stdout.print("[runtime][line {}] Error: {s}\n", .{ line, msg });
+    runtime_err = true;
 }
 
 pub fn report(line: u32, where: []u8, msg: []const u8) !void {
@@ -52,14 +58,21 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     const exprs = try parser.parse();
     defer exprs.deinit();
 
+    if (has_err) return;
+
     var interpreter = Interpreter.init(allocator);
 
+    // for (exprs.items) |expr| {
+    //     var res = std.ArrayList(u8).init(allocator);
+    //     defer res.deinit();
+    //     try expr.to_string(&res);
+    //     try stdout.print("{s}\n", .{res.items});
+    // }
+
     for (exprs.items) |expr| {
-        var res = std.ArrayList(u8).init(allocator);
-        defer res.deinit();
-        try expr.to_string(&res);
-        try stdout.print("{s}\n", .{res.items});
-        _ = try interpreter.evaluvate(expr);
+        if (try interpreter.evaluvate(expr)) |lit| {
+            std.debug.print("{s}\n", .{try lit.to_string()});
+        }
     }
 }
 
@@ -87,12 +100,15 @@ fn run_promt(allocator: std.mem.Allocator) !void {
     while (true) {
         try stdout.print("\n> ", .{});
 
-        const line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse break;
-        defer allocator.free(line);
-
-        if (std.mem.eql(u8, line, "") or std.mem.eql(u8, line, "exit")) break;
-
-        try run(line, allocator);
+        const read_line = (try stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize))) orelse break;
+        defer allocator.free(read_line);
+        if (std.mem.eql(u8, read_line, "") or std.mem.eql(u8, read_line, "exit")) break;
+        var lines = std.mem.splitSequence(u8, read_line, "\\n");
+        while (lines.next()) |line| {
+            if (!std.mem.eql(u8, line, "")) {
+                try run(@constCast(line), allocator);
+            }
+        }
     }
 }
 

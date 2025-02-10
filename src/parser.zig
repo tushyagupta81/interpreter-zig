@@ -48,11 +48,11 @@ pub const Parser = struct {
     }
 
     fn equality(self: *Self) anyerror!*Expr {
-        const left = try self.comarision();
+        const left = try self.comparision();
 
         while (self.match(&[_]TokenType{ TokenType.Bang_equal, TokenType.Equal_equal })) {
             const op = self.previous();
-            const right = try self.comarision();
+            const right = try self.comparision();
             const binary_expr = try self.allocator.create(Expr);
             binary_expr.* = Expr{
                 .binary = .{
@@ -67,7 +67,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn comarision(self: *Self) anyerror!*Expr {
+    fn comparision(self: *Self) anyerror!*Expr {
         const left = try self.term();
 
         while (self.match(&[_]TokenType{ TokenType.Greater, TokenType.Less, TokenType.Greater_equal, TokenType.Less_equal })) {
@@ -131,16 +131,6 @@ pub const Parser = struct {
         if (self.match(&[_]TokenType{ TokenType.Bang, TokenType.Minus })) {
             const op = self.previous();
             const right = try self.unary();
-            // var res = Expr{
-            //     .unary = .{
-            //         .op = &op,
-            //         .right = &right,
-            //     },
-            // };
-            // std.debug.print("{s}", .{res.to_string(self.allocator) catch |err| {
-            //     std.debug.print("{any}", .{err});
-            //     return ParseError.ExpectedExpresion;
-            // }});
             const unary_expr = try self.allocator.create(Expr);
             unary_expr.* = Expr{
                 .unary = .{
@@ -149,6 +139,18 @@ pub const Parser = struct {
                 },
             };
             return unary_expr;
+        } else if (self.match(&[_]TokenType{
+            TokenType.Star,
+            TokenType.Slash,
+            TokenType.Plus,
+            TokenType.Greater,
+            TokenType.Less,
+            TokenType.Greater_equal,
+            TokenType.Less_equal,
+            TokenType.Bang_equal,
+            TokenType.Equal_equal,
+        })) {
+            try parse_error(self.peek(), "Expected left expression", self.allocator);
         }
 
         return try self.primary();

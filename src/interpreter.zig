@@ -3,7 +3,7 @@ const Expr = @import("./expr.zig").Expr;
 const ExprType = @import("./expr.zig");
 const TokenType = @import("./token.zig").TokenType;
 const LiteralValue = @import("./token.zig").LiteralValue;
-const base_error = @import("./main.zig").base_error;
+const runtime_error = @import("./main.zig").runtime_error;
 
 const InterpreterError = error{
     ExpectedLeft,
@@ -29,19 +29,18 @@ pub const Interpreter = struct {
                 return try self.evaluvate_binary(&expr.binary);
             },
             Expr.grouping => {
-                std.debug.print("Grouping", .{});
+                return try self.evaluvate(expr.grouping.expression);
                 // return try self.evaluvate_binary(&grouping);
             },
             Expr.literal => {
-                std.debug.print("Literal", .{});
+                return expr.literal.value;
                 // return try self.evaluvate_binary(&literal);
             },
         }
         return null;
     }
 
-    fn evaluvate_binary(self: *Self, expr: *ExprType.BinaryExpr) anyerror!LiteralValue {
-        std.debug.print("Hello world {any}", .{@TypeOf(expr.*)});
+    fn evaluvate_binary(self: *Self, expr: *ExprType.BinaryExpr) anyerror!?LiteralValue {
         const left = try self.evaluvate(expr.left) orelse return InterpreterError.ExpectedLeft;
         const right = try self.evaluvate(expr.right) orelse return InterpreterError.ExpectedRight;
 
@@ -54,6 +53,10 @@ pub const Interpreter = struct {
                     return LiteralValue{ .Float = left.Float - right.Float };
                 },
                 TokenType.Slash => {
+                    if (right.Float == 0) {
+                        try runtime_error(expr.op.line, "Divide by 0");
+                        return null;
+                    }
                     return LiteralValue{ .Float = left.Float / right.Float };
                 },
                 TokenType.Star => {
@@ -77,7 +80,7 @@ pub const Interpreter = struct {
                 TokenType.Bang_equal => {
                     return LiteralValue{ .Bool = !self.is_equal(left, right) };
                 },
-                else => try base_error(expr.op.line, "Unexpected character in binary expression"),
+                else => try runtime_error(expr.op.line, "Unexpected character in binary expression"),
             }
         } else if (@intFromEnum(left) == @intFromEnum(LiteralValue.String) and @intFromEnum(right) == @intFromEnum(LiteralValue.String)) {
             switch (expr.op.type) {
@@ -85,14 +88,25 @@ pub const Interpreter = struct {
                     var buf: [4096]u8 = undefined;
                     return LiteralValue{ .String = try std.fmt.bufPrint(&buf, "{s}{s}", .{ left.String, right.String }) };
                 },
-                else => try base_error(expr.op.line, "Unexpected character in binary expression"),
+                else => try runtime_error(expr.op.line, "Unexpected character in binary expression"),
             }
+        } else if (@intFromEnum(left) == @intFromEnum(LiteralValue.String) and @intFromEnum(right) == @intFromEnum(LiteralValue.Float)) {
+            switch (expr.op.type) {
+                TokenType.Plus => {
+                    var buf: [4096]u8 = undefined;
+                    return LiteralValue{ .String = try std.fmt.bufPrint(&buf, "{s}{d}", .{ left.String, right.Float }) };
+                },
+                else => try runtime_error(expr.op.line, "Unexpected character in binary expression"),
+            }
+        } else {
+            try runtime_error(expr.op.line, "Cannot preform binary action on diffrent data types");
+            return null;
         }
 
         unreachable;
     }
 
-    fn evaluvate_unary(self: *Self, expr: *const ExprType.UnaryExpr) anyerror!LiteralValue {
+    fn evaluvate_unary(self: *Self, expr: *const ExprType.UnaryExpr) anyerror!?LiteralValue {
         const right = try self.evaluvate(expr.right) orelse return InterpreterError.ExpectedRight;
 
         switch (expr.op.type) {
@@ -102,7 +116,10 @@ pub const Interpreter = struct {
             TokenType.Bang => {
                 return LiteralValue{ .Bool = !self.is_truthy(right) };
             },
-            else => try base_error(expr.op.line, "Unexpected charecter"),
+            else => {
+                try runtime_error(expr.op.line, "Unexpected character");
+                return null;
+            },
         }
 
         unreachable;
