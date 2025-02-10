@@ -58,7 +58,10 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     const exprs = try parser.parse();
     defer exprs.deinit();
 
-    if (has_err) return;
+    if (has_err) {
+        has_err = false;
+        return;
+    }
 
     var interpreter = Interpreter.init(allocator);
 
