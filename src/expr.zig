@@ -63,41 +63,4 @@ pub const Expr = union(enum) {
             },
         }
     }
-
-    // binary: struct {
-    //     left: *Expr,
-    //     op: Token,
-    //     right: *Expr,
-    // },
-    // grouping: struct {
-    //     expression: *Expr,
-    // },
-    // unary: struct {
-    //     op: Token,
-    //     right: *Expr,
-    // },
-    // literal: struct {
-    //     value: LiteralValue,
-    // },
-
-    // pub fn to_string(expr: Expr, allocator: *std.mem.Allocator) ![]u8 {
-    //     switch (expr) {
-    //         Expr.binary => |e| {
-    //             const res = try std.fmt.allocPrint(allocator.*, "( {s} {s} {s} )", .{ try e.left.to_string(allocator), e.op.lexeme, try e.right.to_string(allocator) });
-    //             return res;
-    //         },
-    //         Expr.grouping => |e| {
-    //             const res = try std.fmt.allocPrint(allocator.*, "(group {s})", .{try e.expression.to_string(allocator)});
-    //             return res;
-    //         },
-    //         Expr.unary => |e| {
-    //             const res = try std.fmt.allocPrint(allocator.*, "( {s} {s} )", .{ e.op.lexeme, try e.right.*.to_string(allocator) });
-    //             return res;
-    //         },
-    //         Expr.literal => |e| {
-    //             const res = try std.fmt.allocPrint(allocator.*, "{s}", .{try e.value.to_string(allocator)});
-    //             return res;
-    //         },
-    //     }
-    // }
 };

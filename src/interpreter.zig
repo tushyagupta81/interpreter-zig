@@ -1,5 +1,7 @@
 const std = @import("std");
+const stdout = std.io.getStdOut().writer();
 const Expr = @import("./expr.zig").Expr;
+const Stmt = @import("./statement.zig").Stmt;
 const ExprType = @import("./expr.zig");
 const TokenType = @import("./token.zig").TokenType;
 const LiteralValue = @import("./token.zig").LiteralValue;
@@ -20,7 +22,28 @@ pub const Interpreter = struct {
         };
     }
 
-    pub fn evaluvate(self: *Self, expr: *Expr) !?LiteralValue {
+    pub fn evaluvate_stmts(self: *Self, stmts: std.ArrayList(*Stmt)) !void {
+        for (stmts.items) |stmt| {
+            try self.evaluvate_stmt(stmt);
+        }
+    }
+
+    fn evaluvate_stmt(self: *Self, stmt: *Stmt) !void {
+        switch (stmt.*) {
+            Stmt.expr_stmt => {
+                _ = try self.evaluvate(stmt.expr_stmt.expr);
+            },
+            Stmt.print_stmt => {
+                const lit = try self.evaluvate(stmt.print_stmt.expr);
+                if (lit) |l| {
+                    try stdout.print("{s}\n", .{try l.to_string()});
+                }
+            },
+            // else => {},
+        }
+    }
+
+    fn evaluvate(self: *Self, expr: *Expr) !?LiteralValue {
         switch (expr.*) {
             Expr.unary => {
                 return try self.evaluvate_unary(&expr.unary);

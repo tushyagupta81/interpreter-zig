@@ -65,8 +65,9 @@ pub const LiteralValue = union(enum) {
                 // return buf;
             },
             LiteralValue.String => {
-                var buf: [4096]u8 = undefined;
-                return try std.fmt.bufPrint(&buf, "\"{s}\"", .{self.String});
+                return self.String;
+                // var buf: [4096]u8 = undefined;
+                // return try std.fmt.bufPrint(&buf, "\"{s}\"", .{self.String});
             },
             LiteralValue.Bool => |v| {
                 if (v) {

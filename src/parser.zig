@@ -3,9 +3,14 @@ const Expr = @import("./expr.zig").Expr;
 const Token = @import("./token.zig").Token;
 const TokenType = @import("./token.zig").TokenType;
 const LiteralValue = @import("./token.zig").LiteralValue;
+const Stmt = @import("./statement.zig").Stmt;
 const parse_error = @import("./main.zig").parse_error;
 
-const ParseError = error{ ExpectedRightParen, ExpectedExpresion };
+const ParseError = error{
+    ExpectedRightParen,
+    ExpectedExpresion,
+    ExpectedSemicolon,
+};
 
 pub const Parser = struct {
     const Self = @This();
@@ -26,21 +31,54 @@ pub const Parser = struct {
     //     return try self.expression();
     // }
 
-    pub fn parse(self: *Self) anyerror!std.ArrayList(*Expr) {
-        var exprs = std.ArrayList(*Expr).init(self.allocator);
+    pub fn parse(self: *Self) anyerror!std.ArrayList(*Stmt) {
+        var stmts = std.ArrayList(*Stmt).init(self.allocator);
         while (!self.is_at_end()) {
-            const expr = self.expression() catch |err| {
+            const stmt = self.statement() catch |err| {
                 switch (err) {
                     ParseError.ExpectedRightParen => try parse_error(self.peek(), "Expected Right Parenthesis.", self.allocator),
                     ParseError.ExpectedExpresion => try parse_error(self.peek(), "Expected Expression.", self.allocator),
+                    ParseError.ExpectedSemicolon => try parse_error(self.peek(), "Expected Semicolon after Expression.", self.allocator),
                     else => return err,
                 }
                 self.syncronize();
                 continue;
             };
-            try exprs.append(expr);
+            try stmts.append(stmt);
         }
-        return exprs;
+        return stmts;
+    }
+
+    fn statement(self: *Self) anyerror!*Stmt {
+        if (self.match(&[_]TokenType{TokenType.Print})) {
+            return try self.print_statement();
+        }
+
+        return try self.expr_statement();
+    }
+
+    fn print_statement(self: *Self) !*Stmt {
+        const expr = try self.expression();
+        _ = try self.consume(TokenType.Semicolon, ParseError.ExpectedSemicolon);
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .print_stmt = .{
+                .expr = expr,
+            },
+        };
+        return stmt;
+    }
+
+    fn expr_statement(self: *Self) !*Stmt {
+        const expr = try self.expression();
+        _ = try self.consume(TokenType.Semicolon, ParseError.ExpectedSemicolon);
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .expr_stmt = .{
+                .expr = expr,
+            },
+        };
+        return stmt;
     }
 
     fn expression(self: *Self) anyerror!*Expr {
@@ -48,7 +86,7 @@ pub const Parser = struct {
     }
 
     fn equality(self: *Self) anyerror!*Expr {
-        const left = try self.comparision();
+        var left = try self.comparision();
 
         while (self.match(&[_]TokenType{ TokenType.Bang_equal, TokenType.Equal_equal })) {
             const op = self.previous();
@@ -61,14 +99,14 @@ pub const Parser = struct {
                     .right = right,
                 },
             };
-            return binary_expr;
+            left = binary_expr;
         }
 
         return left;
     }
 
     fn comparision(self: *Self) anyerror!*Expr {
-        const left = try self.term();
+        var left = try self.term();
 
         while (self.match(&[_]TokenType{ TokenType.Greater, TokenType.Less, TokenType.Greater_equal, TokenType.Less_equal })) {
             const op = self.previous();
@@ -81,14 +119,14 @@ pub const Parser = struct {
                     .right = right,
                 },
             };
-            return binary_expr;
+            left = binary_expr;
         }
 
         return left;
     }
 
     fn term(self: *Self) anyerror!*Expr {
-        const left = try self.factor();
+        var left = try self.factor();
 
         while (self.match(&[_]TokenType{ TokenType.Minus, TokenType.Plus })) {
             const op = self.previous();
@@ -101,14 +139,14 @@ pub const Parser = struct {
                     .right = right,
                 },
             };
-            return binary_expr;
+            left = binary_expr;
         }
 
         return left;
     }
 
     fn factor(self: *Self) anyerror!*Expr {
-        const left = try self.unary();
+        var left = try self.unary();
 
         while (self.match(&[_]TokenType{ TokenType.Star, TokenType.Slash })) {
             const op = self.previous();
@@ -121,7 +159,7 @@ pub const Parser = struct {
                     .right = right,
                 },
             };
-            return binary_expr;
+            left = binary_expr;
         }
 
         return left;

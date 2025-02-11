@@ -55,8 +55,8 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
 
     var parser = Parser.init(arenaAlloc, tokens);
 
-    const exprs = try parser.parse();
-    defer exprs.deinit();
+    const stmts = try parser.parse();
+    defer stmts.deinit();
 
     if (has_err) {
         has_err = false;
@@ -64,19 +64,20 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
     }
 
     var interpreter = Interpreter.init(allocator);
+    try interpreter.evaluvate_stmts(stmts);
 
-    // for (exprs.items) |expr| {
+    // for (stmts.items) |stmt| {
     //     var res = std.ArrayList(u8).init(allocator);
     //     defer res.deinit();
-    //     try expr.to_string(&res);
+    //     try stmt.to_string(&res);
     //     try stdout.print("{s}\n", .{res.items});
     // }
 
-    for (exprs.items) |expr| {
-        if (try interpreter.evaluvate(expr)) |lit| {
-            std.debug.print("{s}\n", .{try lit.to_string()});
-        }
-    }
+    // for (exprs.items) |expr| {
+    //     if (try interpreter.evaluvate(expr)) |lit| {
+    //         std.debug.print("{s}\n", .{try lit.to_string()});
+    //     }
+    // }
 }
 
 fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
