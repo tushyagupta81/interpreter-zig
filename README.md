@@ -23,6 +23,15 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [ ] compare numbers and string(Don't know what it should really do?)
         - [x] and numbers to string
         - [x] divide by 0 check
+- [ ] Statements
+    - [ ] Parts
+        - [x] Exprs
+        - [x] print
+        - [ ] variables
+        - [ ] return
+        - [ ] conditionals
+        - [ ] loops
+        - [ ] ...
 - [ ] Resolver
 - [ ] ...
 
