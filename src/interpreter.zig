@@ -4,8 +4,10 @@ const Expr = @import("./expr.zig").Expr;
 const Stmt = @import("./statement.zig").Stmt;
 const ExprType = @import("./expr.zig");
 const TokenType = @import("./token.zig").TokenType;
+const Token = @import("./token.zig").Token;
 const LiteralValue = @import("./token.zig").LiteralValue;
 const runtime_error = @import("./main.zig").runtime_error;
+const Environment = @import("./environment.zig").Environment;
 
 const InterpreterError = error{
     ExpectedLeft,
@@ -15,11 +17,17 @@ const InterpreterError = error{
 pub const Interpreter = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
+    environment: Environment,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
+            .environment = Environment.init(allocator),
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.environment.deinit();
     }
 
     pub fn evaluvate_stmts(self: *Self, stmts: std.ArrayList(*Stmt)) !void {
@@ -38,6 +46,24 @@ pub const Interpreter = struct {
                 if (lit) |l| {
                     try stdout.print("{s}\n", .{try l.to_string()});
                 }
+            },
+            Stmt.var_stmt => {
+                var value: LiteralValue = undefined;
+                if (stmt.var_stmt.initializer) |initializer| {
+                    if (try self.evaluvate(initializer)) |v| {
+                        value = v;
+                    } else {
+                        value = LiteralValue{
+                            .Nil = {},
+                        };
+                    }
+                } else {
+                    value = LiteralValue{
+                        .Nil = {},
+                    };
+                }
+
+                try self.environment.define(stmt.var_stmt.name, value);
             },
             // else => {},
         }
@@ -59,8 +85,24 @@ pub const Interpreter = struct {
                 return expr.literal.value;
                 // return try self.evaluvate_binary(&literal);
             },
+            Expr.variable => {
+                return try self.evaluvate_variable(expr.variable.name);
+            },
+            Expr.assign => {
+                return try self.evaluvate_assign(&expr.assign);
+            },
         }
         return null;
+    }
+
+    fn evaluvate_assign(self: *Self, expr: *ExprType.AssignExpr) anyerror!?LiteralValue {
+        const val = try self.evaluvate(expr.value) orelse return null;
+        try self.environment.assign(expr.name, val);
+        return val;
+    }
+
+    fn evaluvate_variable(self: *Self, name: Token) !?LiteralValue {
+        return try self.environment.get(name);
     }
 
     fn evaluvate_binary(self: *Self, expr: *ExprType.BinaryExpr) anyerror!?LiteralValue {

@@ -3,10 +3,14 @@ const stdout = std.io.getStdOut().writer();
 const Token = @import("./token.zig").Token;
 const LiteralValue = @import("./token.zig").LiteralValue;
 
-// pub const AssignExpr = struct {
-//     name: *Token,
-//     value: *Expr,
-// };
+pub const AssignExpr = struct {
+    name: Token,
+    value: *Expr,
+};
+
+pub const VariableExpr = struct {
+    name: Token,
+};
 
 pub const BinaryExpr = struct {
     left: *Expr,
@@ -34,6 +38,9 @@ pub const Expr = union(enum) {
     grouping: GroupingExpr,
     unary: UnaryExpr,
     literal: LiteralExpr,
+    variable: VariableExpr,
+    assign: AssignExpr,
+
     pub fn to_string(expr: Expr, res: *std.ArrayList(u8)) !void {
         switch (expr) {
             Expr.binary => |e| {
@@ -59,8 +66,11 @@ pub const Expr = union(enum) {
             },
             Expr.literal => |e| {
                 try res.appendSlice(try e.value.to_string());
-                // const res = try std.fmt.allocPrint(allocator.*, "{s}", .{try e.value.to_string(allocator)});
             },
+            Expr.variable => |e| {
+                try res.appendSlice(e.name.lexeme);
+            },
+            else => {},
         }
     }
 };

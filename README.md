@@ -27,7 +27,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
     - [ ] Parts
         - [x] Exprs
         - [x] print
-        - [ ] variables
+        - [x] variables(without scope)
+        - [ ] variables(with scope)
         - [ ] return
         - [ ] conditionals
         - [ ] loops
@@ -43,6 +44,9 @@ The rust borrow checker made the way of making the interpreter feel like hell
 2. token.zig
     - LiteralValue
         - [ ] to_string methods size limit of 4096
+
+3. enironment.zig
+    - [ ] get -> string concat size limit of 4096
 
 ## Shifted to zig
 

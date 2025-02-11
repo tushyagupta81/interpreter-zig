@@ -10,6 +10,7 @@ const ParseError = error{
     ExpectedRightParen,
     ExpectedExpresion,
     ExpectedSemicolon,
+    ExpectedVariableName,
 };
 
 pub const Parser = struct {
@@ -34,7 +35,7 @@ pub const Parser = struct {
     pub fn parse(self: *Self) anyerror!std.ArrayList(*Stmt) {
         var stmts = std.ArrayList(*Stmt).init(self.allocator);
         while (!self.is_at_end()) {
-            const stmt = self.statement() catch |err| {
+            const stmt = self.declaration() catch |err| {
                 switch (err) {
                     ParseError.ExpectedRightParen => try parse_error(self.peek(), "Expected Right Parenthesis.", self.allocator),
                     ParseError.ExpectedExpresion => try parse_error(self.peek(), "Expected Expression.", self.allocator),
@@ -47,6 +48,34 @@ pub const Parser = struct {
             try stmts.append(stmt);
         }
         return stmts;
+    }
+
+    fn declaration(self: *Self) anyerror!*Stmt {
+        if (self.match(&[_]TokenType{TokenType.Var})) {
+            return try self.var_declaration();
+        } else {
+            return try self.statement();
+        }
+    }
+
+    fn var_declaration(self: *Self) anyerror!*Stmt {
+        const name = try self.consume(TokenType.Identifier, ParseError.ExpectedVariableName);
+
+        var initializer: ?*Expr = null;
+        if (self.match(&[_]TokenType{TokenType.Equal})) {
+            initializer = try self.expression();
+        }
+
+        _ = try self.consume(TokenType.Semicolon, ParseError.ExpectedSemicolon);
+
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .var_stmt = .{
+                .name = name,
+                .initializer = initializer,
+            },
+        };
+        return stmt;
     }
 
     fn statement(self: *Self) anyerror!*Stmt {
@@ -82,7 +111,29 @@ pub const Parser = struct {
     }
 
     fn expression(self: *Self) anyerror!*Expr {
-        return try self.equality();
+        return try self.assignment();
+    }
+
+    fn assignment(self: *Self) anyerror!*Expr {
+        const left = try self.equality();
+
+        if (self.match(&[_]TokenType{TokenType.Equal})) {
+            _ = self.previous();
+            const val = try self.assignment();
+            if (left.* == Expr.variable) {
+                const name = left.variable.name;
+                const assign_expr = try self.allocator.create(Expr);
+                assign_expr.* = Expr{
+                    .assign = .{
+                        .name = name,
+                        .value = val,
+                    },
+                };
+                return assign_expr;
+            }
+        }
+
+        return left;
     }
 
     fn equality(self: *Self) anyerror!*Expr {
@@ -249,6 +300,16 @@ pub const Parser = struct {
                 },
             };
             return literal;
+        }
+        if (self.match(&[_]TokenType{TokenType.Identifier})) {
+            const name = self.previous();
+            const variable = try self.allocator.create(Expr);
+            variable.* = Expr{
+                .variable = .{
+                    .name = name,
+                },
+            };
+            return variable;
         }
         if (self.match(&[_]TokenType{TokenType.Left_paren})) {
             const expr = try self.expression();

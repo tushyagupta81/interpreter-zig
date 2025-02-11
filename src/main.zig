@@ -38,7 +38,7 @@ pub fn report(line: u32, where: []u8, msg: []const u8) !void {
     has_err = true;
 }
 
-fn run(source: []u8, allocator: std.mem.Allocator) !void {
+fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !void {
     var scanner = Scanner.init(allocator, source);
     defer scanner.deinit();
     const tokens = try scanner.scan_tokens();
@@ -63,7 +63,6 @@ fn run(source: []u8, allocator: std.mem.Allocator) !void {
         return;
     }
 
-    var interpreter = Interpreter.init(allocator);
     try interpreter.evaluvate_stmts(stmts);
 
     // for (stmts.items) |stmt| {
@@ -96,11 +95,15 @@ fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const contents = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(contents);
 
-    try run(contents, allocator);
+    var interpreter = Interpreter.init(allocator);
+    defer interpreter.deinit();
+    try run(contents, allocator, &interpreter);
 }
 
 fn run_promt(allocator: std.mem.Allocator) !void {
     try stdout.print("repl mode\n", .{});
+    var interpreter = Interpreter.init(allocator);
+    defer interpreter.deinit();
     while (true) {
         try stdout.print("\n> ", .{});
 
@@ -110,7 +113,7 @@ fn run_promt(allocator: std.mem.Allocator) !void {
         var lines = std.mem.splitSequence(u8, read_line, "\\n");
         while (lines.next()) |line| {
             if (!std.mem.eql(u8, line, "")) {
-                try run(@constCast(line), allocator);
+                try run(@constCast(line), allocator, &interpreter);
             }
         }
     }
