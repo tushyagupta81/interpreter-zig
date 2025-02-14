@@ -65,6 +65,16 @@ pub const Interpreter = struct {
 
                 try self.environment.define(stmt.var_stmt.name, value);
             },
+            Stmt.block_stmt => {
+                var previous = self.environment;
+                self.environment = Environment.init(self.allocator);
+                self.environment.enclosing = &previous;
+                for (stmt.block_stmt.stmts) |st| {
+                    try self.evaluvate_stmt(st);
+                }
+                self.environment.deinit();
+                self.environment = previous;
+            },
             // else => {},
         }
     }

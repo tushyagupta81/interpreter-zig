@@ -11,6 +11,7 @@ const ParseError = error{
     ExpectedExpresion,
     ExpectedSemicolon,
     ExpectedVariableName,
+    ExpectedRightBrace,
 };
 
 pub const Parser = struct {
@@ -40,6 +41,8 @@ pub const Parser = struct {
                     ParseError.ExpectedRightParen => try parse_error(self.peek(), "Expected Right Parenthesis.", self.allocator),
                     ParseError.ExpectedExpresion => try parse_error(self.peek(), "Expected Expression.", self.allocator),
                     ParseError.ExpectedSemicolon => try parse_error(self.peek(), "Expected Semicolon after Expression.", self.allocator),
+                    ParseError.ExpectedVariableName => try parse_error(self.peek(), "Expected Variable name", self.allocator),
+                    ParseError.ExpectedRightBrace => try parse_error(self.peek(), "Expected closing brace", self.allocator),
                     else => return err,
                 }
                 self.syncronize();
@@ -81,9 +84,27 @@ pub const Parser = struct {
     fn statement(self: *Self) anyerror!*Stmt {
         if (self.match(&[_]TokenType{TokenType.Print})) {
             return try self.print_statement();
+        } else if (self.match(&[_]TokenType{TokenType.Left_brace})) {
+            return try self.block_statement();
         }
 
         return try self.expr_statement();
+    }
+
+    fn block_statement(self: *Self) !*Stmt {
+        var stmts = std.ArrayList(*Stmt).init(self.allocator);
+        while (!self.check(TokenType.Right_brace) and !self.is_at_end()) {
+            try stmts.append(try self.declaration());
+        }
+        _ = try self.consume(TokenType.Right_brace, ParseError.ExpectedRightBrace);
+
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .block_stmt = .{
+                .stmts = stmts.items,
+            },
+        };
+        return stmt;
     }
 
     fn print_statement(self: *Self) !*Stmt {
