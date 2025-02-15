@@ -8,10 +8,12 @@ const parse_error = @import("./main.zig").parse_error;
 
 const ParseError = error{
     ExpectedRightParen,
+    ExpectedLeftParen,
     ExpectedExpresion,
     ExpectedSemicolon,
     ExpectedVariableName,
     ExpectedRightBrace,
+    ExpectedLeftBrace,
 };
 
 pub const Parser = struct {
@@ -82,13 +84,37 @@ pub const Parser = struct {
     }
 
     fn statement(self: *Self) anyerror!*Stmt {
-        if (self.match(&[_]TokenType{TokenType.Print})) {
+        if (self.match(&[_]TokenType{TokenType.If})) {
+            return try self.if_statement();
+        } else if (self.match(&[_]TokenType{TokenType.Print})) {
             return try self.print_statement();
         } else if (self.match(&[_]TokenType{TokenType.Left_brace})) {
             return try self.block_statement();
         }
 
         return try self.expr_statement();
+    }
+
+    fn if_statement(self: *Self) !*Stmt {
+        _ = try self.consume(TokenType.Left_paren, ParseError.ExpectedLeftParen);
+        const cond = try self.expression();
+        _ = try self.consume(TokenType.Right_paren, ParseError.ExpectedRightParen);
+
+        const then_branch = try self.statement();
+        var else_branch: ?*Stmt = null;
+        if (self.match(&[_]TokenType{TokenType.Else})) {
+            else_branch = try self.statement();
+        }
+
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .if_stmt = .{
+                .condition = cond,
+                .then_branch = then_branch,
+                .else_branch = else_branch,
+            },
+        };
+        return stmt;
     }
 
     fn block_statement(self: *Self) !*Stmt {
@@ -136,7 +162,7 @@ pub const Parser = struct {
     }
 
     fn assignment(self: *Self) anyerror!*Expr {
-        const left = try self.equality();
+        const left = try self.or_();
 
         if (self.match(&[_]TokenType{TokenType.Equal})) {
             _ = self.previous();
@@ -152,6 +178,46 @@ pub const Parser = struct {
                 };
                 return assign_expr;
             }
+        }
+
+        return left;
+    }
+
+    fn or_(self: *Self) anyerror!*Expr {
+        const left = try self.and_();
+
+        if (self.match(&[_]TokenType{TokenType.Or})) {
+            const op = self.previous();
+            const right = try self.and_();
+            const or_expr = try self.allocator.create(Expr);
+            or_expr.* = Expr{
+                .logical = .{
+                    .left = left,
+                    .op = op,
+                    .right = right,
+                },
+            };
+            return or_expr;
+        }
+
+        return left;
+    }
+
+    fn and_(self: *Self) anyerror!*Expr {
+        const left = try self.equality();
+
+        if (self.match(&[_]TokenType{TokenType.And})) {
+            const op = self.previous();
+            const right = try self.equality();
+            const or_expr = try self.allocator.create(Expr);
+            or_expr.* = Expr{
+                .logical = .{
+                    .left = left,
+                    .op = op,
+                    .right = right,
+                },
+            };
+            return or_expr;
         }
 
         return left;

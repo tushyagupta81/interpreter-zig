@@ -75,6 +75,16 @@ pub const Interpreter = struct {
                 self.environment.deinit();
                 self.environment = previous;
             },
+            Stmt.if_stmt => {
+                const lit = try self.evaluvate(stmt.if_stmt.condition);
+                if (lit) |l| {
+                    if (self.is_truthy(l)) {
+                        try self.evaluvate_stmt(stmt.if_stmt.then_branch);
+                    } else if (stmt.if_stmt.else_branch) |else_b| {
+                        try self.evaluvate_stmt(else_b);
+                    }
+                }
+            },
             // else => {},
         }
     }
@@ -101,8 +111,23 @@ pub const Interpreter = struct {
             Expr.assign => {
                 return try self.evaluvate_assign(&expr.assign);
             },
+            Expr.logical => {
+                return try self.evaluvate_logical(&expr.logical);
+            },
         }
         return null;
+    }
+
+    fn evaluvate_logical(self: *Self, expr: *ExprType.LogicalExpr) anyerror!?LiteralValue {
+        const left = (try self.evaluvate(expr.left)).?;
+
+        if (expr.op.type == TokenType.Or) {
+            if (self.is_truthy(left)) return left;
+        } else {
+            if (!self.is_truthy(left)) return left;
+        }
+
+        return try self.evaluvate(expr.right);
     }
 
     fn evaluvate_assign(self: *Self, expr: *ExprType.AssignExpr) anyerror!?LiteralValue {

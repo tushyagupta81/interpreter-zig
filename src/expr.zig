@@ -31,6 +31,12 @@ pub const UnaryExpr = struct {
     right: *Expr,
 };
 
+pub const LogicalExpr = struct {
+    left: *Expr,
+    op: Token,
+    right: *Expr,
+};
+
 pub const Expr = union(enum) {
     const Self = @This();
 
@@ -40,6 +46,7 @@ pub const Expr = union(enum) {
     literal: LiteralExpr,
     variable: VariableExpr,
     assign: AssignExpr,
+    logical: LogicalExpr,
 
     pub fn to_string(expr: Expr, res: *std.ArrayList(u8)) !void {
         switch (expr) {

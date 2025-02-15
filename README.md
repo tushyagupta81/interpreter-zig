@@ -29,8 +29,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [x] print
         - [x] variables(without scope)
         - [x] variables(with scope)
-        - [ ] return
-        - [ ] conditionals
+        - [x] conditionals
+        - [x] and or operators
         - [ ] loops
         - [ ] ...
     - [ ] Challenge
