@@ -6,13 +6,20 @@ const expr_stmt = struct {
     expr: *Expr,
 };
 
+const while_stmt = struct {
+    condition: *Expr,
+    body: *Stmt,
+};
+
 const if_stmt = struct {
     condition: *Expr,
     then_branch: *Stmt,
     else_branch: ?*Stmt,
 };
 
-const block_stmt = struct { stmts: []*Stmt };
+const block_stmt = struct {
+    stmts: []*Stmt,
+};
 
 const print_stmt = struct {
     expr: *Expr,
@@ -29,6 +36,7 @@ pub const Stmt = union(enum) {
     var_stmt: var_stmt,
     block_stmt: block_stmt,
     if_stmt: if_stmt,
+    while_stmt: while_stmt,
 
     pub fn to_string(self: Stmt, res: *std.ArrayList(u8)) !void {
         switch (self) {

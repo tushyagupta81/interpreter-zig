@@ -43,7 +43,7 @@ fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !v
     defer scanner.deinit();
     const tokens = try scanner.scan_tokens();
     // for (tokens.items) |tk| {
-    //     const token_to_string = try tk.to_string(allocator);
+    //     const token_to_string = try tk.to_string(@constCast(&allocator));
     //     defer allocator.free(token_to_string);
     //     try stdout.print("{s}", .{token_to_string});
     // }
@@ -63,14 +63,14 @@ fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !v
         return;
     }
 
-    try interpreter.evaluvate_stmts(stmts);
-
     // for (stmts.items) |stmt| {
     //     var res = std.ArrayList(u8).init(allocator);
     //     defer res.deinit();
     //     try stmt.to_string(&res);
     //     try stdout.print("{s}\n", .{res.items});
     // }
+
+    try interpreter.evaluvate_stmts(stmts);
 
     // for (exprs.items) |expr| {
     //     if (try interpreter.evaluvate(expr)) |lit| {

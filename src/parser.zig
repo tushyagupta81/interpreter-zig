@@ -86,6 +86,10 @@ pub const Parser = struct {
     fn statement(self: *Self) anyerror!*Stmt {
         if (self.match(&[_]TokenType{TokenType.If})) {
             return try self.if_statement();
+        } else if (self.match(&[_]TokenType{TokenType.For})) {
+            return try self.for_statement();
+        } else if (self.match(&[_]TokenType{TokenType.While})) {
+            return try self.while_statement();
         } else if (self.match(&[_]TokenType{TokenType.Print})) {
             return try self.print_statement();
         } else if (self.match(&[_]TokenType{TokenType.Left_brace})) {
@@ -93,6 +97,106 @@ pub const Parser = struct {
         }
 
         return try self.expr_statement();
+    }
+
+    fn for_statement(self: *Self) !*Stmt {
+        _ = try self.consume(TokenType.Left_paren, ParseError.ExpectedLeftParen);
+
+        var initializer: ?*Stmt = undefined;
+        if (self.match(&[_]TokenType{TokenType.Semicolon})) {
+            initializer = null;
+        } else if (self.match(&[_]TokenType{TokenType.Var})) {
+            initializer = try self.var_declaration();
+        } else {
+            initializer = try self.expr_statement();
+        }
+
+        var cond: *Expr = undefined;
+        if (!self.check(TokenType.Semicolon)) {
+            cond = try self.expression();
+        } else {
+            const cond_expr = try self.allocator.create(Expr);
+            cond_expr.* = Expr{
+                .literal = .{
+                    .value = LiteralValue{ .Bool = true },
+                },
+            };
+            cond = cond_expr;
+        }
+        _ = try self.consume(TokenType.Semicolon, ParseError.ExpectedSemicolon);
+
+        var inc: ?*Expr = null;
+        if (!self.check(TokenType.Right_paren)) {
+            inc = try self.expression();
+        }
+
+        _ = try self.consume(TokenType.Right_paren, ParseError.ExpectedRightParen);
+
+        const body_old = try self.statement();
+
+        const body = try self.allocator.create(Stmt);
+        const stmt = try self.allocator.create(Stmt);
+        if (inc) |i| {
+            const inc_stmt = try self.allocator.create(Stmt);
+            inc_stmt.* = Stmt{
+                .expr_stmt = .{
+                    .expr = i,
+                },
+            };
+            var stmts = std.ArrayList(*Stmt).init(self.allocator);
+            try stmts.append(body_old);
+            try stmts.append(inc_stmt);
+            body.* = Stmt{
+                .block_stmt = .{
+                    .stmts = stmts.items,
+                },
+            };
+            stmt.* = Stmt{
+                .while_stmt = .{
+                    .condition = cond,
+                    .body = body,
+                },
+            };
+        } else {
+            stmt.* = Stmt{
+                .while_stmt = .{
+                    .condition = cond,
+                    .body = body_old,
+                },
+            };
+        }
+
+        if (initializer) |initial| {
+            var stmts = std.ArrayList(*Stmt).init(self.allocator);
+            try stmts.append(initial);
+            try stmts.append(stmt);
+            const body_final = try self.allocator.create(Stmt);
+            body_final.* = Stmt{
+                .block_stmt = .{
+                    .stmts = stmts.items,
+                },
+            };
+            return body_final;
+        }
+
+        return stmt;
+    }
+
+    fn while_statement(self: *Self) !*Stmt {
+        _ = try self.consume(TokenType.Left_paren, ParseError.ExpectedLeftParen);
+        const cond = try self.expression();
+        _ = try self.consume(TokenType.Right_paren, ParseError.ExpectedRightParen);
+
+        const body = try self.statement();
+
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .while_stmt = .{
+                .condition = cond,
+                .body = body,
+            },
+        };
+        return stmt;
     }
 
     fn if_statement(self: *Self) !*Stmt {

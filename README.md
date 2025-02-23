@@ -31,11 +31,13 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [x] variables(with scope)
         - [x] conditionals
         - [x] and or operators
-        - [ ] loops
+        - [x] loops
         - [ ] ...
     - [ ] Challenge
         - [ ] REPL to auto detect a expr vs a statement and execute them accordingly
         - [ ] Give runtime error for variable that are declared but not initialized
+        - [ ] branching statements?
+        - [ ] break statement
 - [ ] Resolver
 - [ ] ...
 

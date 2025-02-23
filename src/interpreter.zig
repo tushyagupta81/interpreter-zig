@@ -85,6 +85,19 @@ pub const Interpreter = struct {
                     }
                 }
             },
+            Stmt.while_stmt => {
+                while (true) {
+                    const lit = try self.evaluvate(stmt.while_stmt.condition);
+                    if (lit) |l| {
+                        if (!self.is_truthy(l)) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                    try self.evaluvate_stmt(stmt.while_stmt.body);
+                }
+            },
             // else => {},
         }
     }
