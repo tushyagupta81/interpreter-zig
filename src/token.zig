@@ -1,4 +1,6 @@
 const std = @import("std");
+const Interpreter = @import("./interpreter.zig").Interpreter;
+const Stmt = @import("./statement.zig").Stmt;
 
 pub const TokenType = enum {
     // Single-character tokens.
@@ -50,12 +52,20 @@ pub const TokenType = enum {
     Eof,
 };
 
+const callableLiteral = struct {
+    // name: []const u8,
+    arity: usize,
+    call: *const fn (*Stmt, *Interpreter, std.ArrayList(LiteralValue)) anyerror!LiteralValue,
+    stmt: *Stmt,
+};
+
 pub const LiteralValue = union(enum) {
     const Self = @This();
     Float: f64,
     String: []u8,
     Bool: bool,
     Nil: void,
+    Callable: callableLiteral,
 
     pub fn to_string(self: LiteralValue) ![]const u8 {
         switch (self) {
@@ -77,6 +87,7 @@ pub const LiteralValue = union(enum) {
                 }
             },
             LiteralValue.Nil => return &[_]u8{ 'N', 'i', 'l' },
+            else => return "Todo",
         }
     }
 };

@@ -14,6 +14,8 @@ const ParseError = error{
     ExpectedVariableName,
     ExpectedRightBrace,
     ExpectedLeftBrace,
+    ExpectedFunctionName,
+    TooManyArgs,
 };
 
 pub const Parser = struct {
@@ -45,6 +47,7 @@ pub const Parser = struct {
                     ParseError.ExpectedSemicolon => try parse_error(self.peek(), "Expected Semicolon after Expression.", self.allocator),
                     ParseError.ExpectedVariableName => try parse_error(self.peek(), "Expected Variable name", self.allocator),
                     ParseError.ExpectedRightBrace => try parse_error(self.peek(), "Expected closing brace", self.allocator),
+                    ParseError.TooManyArgs => try parse_error(self.peek(), "Can't have more than 255 arguments", self.allocator),
                     else => return err,
                 }
                 self.syncronize();
@@ -56,11 +59,45 @@ pub const Parser = struct {
     }
 
     fn declaration(self: *Self) anyerror!*Stmt {
-        if (self.match(&[_]TokenType{TokenType.Var})) {
+        if (self.match(&[_]TokenType{TokenType.Fun})) {
+            return try self.function("function");
+        } else if (self.match(&[_]TokenType{TokenType.Var})) {
             return try self.var_declaration();
         } else {
             return try self.statement();
         }
+    }
+
+    fn function(self: *Self, _: []const u8) anyerror!*Stmt {
+        const name = try self.consume(TokenType.Identifier, ParseError.ExpectedFunctionName);
+        _ = try self.consume(TokenType.Left_paren, ParseError.ExpectedLeftParen);
+        var params = std.ArrayList(Token).init(self.allocator);
+        if (!self.check(TokenType.Right_paren)) {
+            while (true) {
+                if (params.items.len >= 255) {
+                    try parse_error(self.peek(), "Can't have more than 255 parameters", self.allocator);
+                }
+
+                try params.append(try self.consume(TokenType.Identifier, ParseError.ExpectedVariableName));
+                if (!self.match(&[_]TokenType{TokenType.Comma})) {
+                    break;
+                }
+            }
+        }
+
+        _ = try self.consume(TokenType.Right_paren, ParseError.ExpectedRightParen);
+
+        _ = try self.consume(TokenType.Left_brace, ParseError.ExpectedRightBrace);
+        const body = try self.block_statement();
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .funcStmt = .{
+                .name = name,
+                .params = params,
+                .body = body.block_stmt.stmts,
+            },
+        };
+        return stmt;
     }
 
     fn var_declaration(self: *Self) anyerror!*Stmt {
@@ -433,7 +470,48 @@ pub const Parser = struct {
             try parse_error(self.peek(), "Expected left expression", self.allocator);
         }
 
-        return try self.primary();
+        return try self.call();
+    }
+
+    fn call(self: *Self) anyerror!*Expr {
+        var expr = try self.primary();
+
+        while (true) {
+            if (self.match(&[_]TokenType{TokenType.Left_paren})) {
+                expr = try self.finishCall(expr);
+            } else {
+                break;
+            }
+        }
+
+        return expr;
+    }
+
+    fn finishCall(self: *Self, callee: *Expr) anyerror!*Expr {
+        var args = std.ArrayList(*Expr).init(self.allocator);
+        if (!self.check(TokenType.Right_paren)) {
+            while (true) {
+                if (args.items.len >= 255) {
+                    return ParseError.TooManyArgs;
+                }
+                try args.append(try self.expression());
+                if (!self.match(&[_]TokenType{TokenType.Comma})) {
+                    break;
+                }
+            }
+        }
+
+        const paren = try self.consume(TokenType.Right_paren, ParseError.ExpectedRightParen);
+
+        const expr = try self.allocator.create(Expr);
+        expr.* = Expr{
+            .callExpr = .{
+                .arguments = args,
+                .callee = callee,
+                .paren = paren,
+            },
+        };
+        return expr;
     }
 
     fn primary(self: *Self) anyerror!*Expr {

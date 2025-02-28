@@ -8,6 +8,12 @@ pub const AssignExpr = struct {
     value: *Expr,
 };
 
+pub const callExpr = struct {
+    callee: *Expr,
+    paren: Token,
+    arguments: std.ArrayList(*Expr),
+};
+
 pub const VariableExpr = struct {
     name: Token,
 };
@@ -47,6 +53,7 @@ pub const Expr = union(enum) {
     variable: VariableExpr,
     assign: AssignExpr,
     logical: LogicalExpr,
+    callExpr: callExpr,
 
     pub fn to_string(expr: Expr, res: *std.ArrayList(u8)) !void {
         switch (expr) {

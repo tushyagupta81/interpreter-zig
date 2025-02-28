@@ -30,6 +30,12 @@ const var_stmt = struct {
     initializer: ?*Expr,
 };
 
+const funcStmt = struct {
+    name: Token,
+    params: std.ArrayList(Token),
+    body: []*Stmt,
+};
+
 pub const Stmt = union(enum) {
     expr_stmt: expr_stmt,
     print_stmt: print_stmt,
@@ -37,6 +43,7 @@ pub const Stmt = union(enum) {
     block_stmt: block_stmt,
     if_stmt: if_stmt,
     while_stmt: while_stmt,
+    funcStmt: funcStmt,
 
     pub fn to_string(self: Stmt, res: *std.ArrayList(u8)) !void {
         switch (self) {

@@ -12,6 +12,8 @@ const Environment = @import("./environment.zig").Environment;
 const InterpreterError = error{
     ExpectedLeft,
     ExpectedRight,
+    ArgumentMismatch,
+    NotACallable,
 };
 
 pub const Interpreter = struct {
@@ -20,9 +22,27 @@ pub const Interpreter = struct {
     environment: Environment,
 
     pub fn init(allocator: std.mem.Allocator) Self {
+        const globals = Environment.init(allocator);
+        // const clock_fn = struct {
+        //     fn call(_: *Interpreter, _: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
+        //         return LiteralValue{ .Float = std.time.milliTimestamp() / 1000 };
+        //     }
+        // }.call;
+        // const clock_callable = LiteralValue{
+        //     .Callable = .{
+        //         .arity = 0,
+        //         .call = clock_fn,
+        //     },
+        // };
+        // try globals.define(Token{
+        //     .line = 0,
+        //     .lexeme = "clock",
+        //     .literal = null,
+        //     .type = TokenType.Fun,
+        // }, clock_callable);
         return Self{
             .allocator = allocator,
-            .environment = Environment.init(allocator),
+            .environment = globals,
         };
     }
 
@@ -98,6 +118,36 @@ pub const Interpreter = struct {
                     try self.evaluvate_stmt(stmt.while_stmt.body);
                 }
             },
+            Stmt.funcStmt => {
+                const fun = struct {
+                    fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
+                        const parenEnv = inter.environment;
+                        defer inter.environment = parenEnv;
+                        var env = Environment.init(inter.allocator);
+                        env.enclosing = &inter.environment;
+
+                        for (0..args.items.len) |i| {
+                            try env.define(stmt_.funcStmt.params.items[i], args.items[i]);
+                        }
+
+                        for (stmt_.funcStmt.body) |s| {
+                            try inter.evaluvate_stmt(s);
+                        }
+
+                        return LiteralValue{ .Nil = {} };
+                    }
+                }.call;
+
+                const callable = LiteralValue{
+                    .Callable = .{
+                        .arity = stmt.funcStmt.params.items.len,
+                        .call = fun,
+                        .stmt = stmt,
+                    },
+                };
+
+                try self.environment.define(stmt.funcStmt.name, callable);
+            },
             // else => {},
         }
     }
@@ -127,8 +177,37 @@ pub const Interpreter = struct {
             Expr.logical => {
                 return try self.evaluvate_logical(&expr.logical);
             },
+            Expr.callExpr => {
+                return try self.evaluvate_call(&expr.callExpr);
+            },
         }
         return null;
+    }
+
+    fn evaluvate_call(self: *Self, expr: *ExprType.callExpr) anyerror!?LiteralValue {
+        const callee = (try self.evaluvate(expr.callee)).?;
+
+        var args = std.ArrayList(LiteralValue).init(self.allocator);
+
+        for (expr.arguments.items) |arg| {
+            try args.append((try self.evaluvate(arg)).?);
+        }
+
+        if (callee != LiteralValue.Callable) {
+            try runtime_error(expr.paren.line, "Can only call funcitons and classes");
+            return InterpreterError.ArgumentMismatch;
+        }
+
+        if (args.items.len != callee.Callable.arity) {
+            const err = try std.fmt.allocPrint(self.allocator, "Expected {} arguments but got {}", .{ expr.arguments.items.len, args.items.len });
+            defer self.allocator.free(err);
+            try runtime_error(expr.paren.line, err);
+            return InterpreterError.NotACallable;
+        }
+
+        const func = callee.Callable.call;
+
+        return try func(callee.Callable.stmt, self, args);
     }
 
     fn evaluvate_logical(self: *Self, expr: *ExprType.LogicalExpr) anyerror!?LiteralValue {
@@ -250,6 +329,7 @@ pub const Interpreter = struct {
                 }
             },
             LiteralValue.String => return true,
+            LiteralValue.Callable => return true,
         }
     }
 
