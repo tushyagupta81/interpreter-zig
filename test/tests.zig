@@ -107,3 +107,10 @@ test "for loop" {
         \\
     );
 }
+
+test "function" {
+    try test_template("./test/function.tox", 0,
+        \\Hello Tushya
+        \\
+    );
+}

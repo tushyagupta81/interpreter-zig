@@ -23,14 +23,24 @@ pub const Parser = struct {
 
     tokens: std.ArrayList(Token),
     allocator: std.mem.Allocator,
+    to_free: std.ArrayList(std.ArrayList(Token)),
     current: u32,
 
     pub fn init(allocator: std.mem.Allocator, tokens: std.ArrayList(Token)) Self {
         return Self{
             .tokens = tokens,
             .allocator = allocator,
+            .to_free = std.ArrayList(std.ArrayList(Token)).init(allocator),
             .current = 0,
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.to_free.items) |item| {
+            item.deinit();
+            // self.allocator.free(item);
+        }
+        self.to_free.deinit();
     }
 
     // pub fn parse(self: *Self) anyerror!*Expr {
@@ -72,6 +82,7 @@ pub const Parser = struct {
         const name = try self.consume(TokenType.Identifier, ParseError.ExpectedFunctionName);
         _ = try self.consume(TokenType.Left_paren, ParseError.ExpectedLeftParen);
         var params = std.ArrayList(Token).init(self.allocator);
+        try self.to_free.append(params);
         if (!self.check(TokenType.Right_paren)) {
             while (true) {
                 if (params.items.len >= 255) {

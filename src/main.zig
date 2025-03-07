@@ -54,6 +54,7 @@ fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !v
     const arenaAlloc = arena.allocator();
 
     var parser = Parser.init(arenaAlloc, tokens);
+    defer parser.deinit();
 
     const stmts = try parser.parse();
     defer stmts.deinit();

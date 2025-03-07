@@ -123,11 +123,11 @@ pub const Interpreter = struct {
                     fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
                         const parenEnv = inter.environment;
                         defer inter.environment = parenEnv;
-                        var env = Environment.init(inter.allocator);
-                        env.enclosing = &inter.environment;
+                        inter.environment = Environment.init(inter.allocator);
+                        defer inter.environment.deinit();
 
                         for (0..args.items.len) |i| {
-                            try env.define(stmt_.funcStmt.params.items[i], args.items[i]);
+                            try inter.environment.define(stmt_.funcStmt.params.items[i], args.items[i]);
                         }
 
                         for (stmt_.funcStmt.body) |s| {
@@ -188,6 +188,7 @@ pub const Interpreter = struct {
         const callee = (try self.evaluvate(expr.callee)).?;
 
         var args = std.ArrayList(LiteralValue).init(self.allocator);
+        defer args.deinit();
 
         for (expr.arguments.items) |arg| {
             try args.append((try self.evaluvate(arg)).?);
