@@ -33,8 +33,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [x] and or operators
         - [x] loops
         - [x] Functions
-            - [ ] Return
-            - [ ] Local functions
+            - [x] Return
+            - [ ] Local functions(can't really figure it out)
         - [ ] ...
     - [ ] Challenge
         - [ ] REPL to auto detect a expr vs a statement and execute them accordingly

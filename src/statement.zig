@@ -30,6 +30,11 @@ const var_stmt = struct {
     initializer: ?*Expr,
 };
 
+const return_stmt = struct {
+    keyword: Token,
+    value: ?*Expr,
+};
+
 const funcStmt = struct {
     name: Token,
     params: std.ArrayList(Token),
@@ -44,6 +49,7 @@ pub const Stmt = union(enum) {
     if_stmt: if_stmt,
     while_stmt: while_stmt,
     funcStmt: funcStmt,
+    return_stmt: return_stmt,
 
     pub fn to_string(self: Stmt, res: *std.ArrayList(u8)) !void {
         switch (self) {

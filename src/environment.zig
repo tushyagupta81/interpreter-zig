@@ -54,6 +54,11 @@ pub const Environment = struct {
     }
 
     pub fn get(self: *Self, name: Token) !?LiteralValue {
+        // var it = self.values.iterator();
+        // while (it.next()) |v| {
+        //     std.debug.print("{s}\n", .{v.key_ptr.*});
+        // }
+        // std.debug.print("\n\n\n", .{});
         if (self.values.get(name.lexeme)) |value| {
             return value;
         }
@@ -62,6 +67,16 @@ pub const Environment = struct {
         }
         var buf: [4096]u8 = undefined;
         try runtime_error(name.line, try std.fmt.bufPrint(&buf, "Undefined variable '{s}'", .{name.lexeme}));
+        return null;
+    }
+
+    pub fn get_no_warn(self: *Self, name: Token) !?LiteralValue {
+        if (self.values.get(name.lexeme)) |value| {
+            return value;
+        }
+        if (self.enclosing) |enc| {
+            return try enc.get(name);
+        }
         return null;
     }
 };

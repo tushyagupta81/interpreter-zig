@@ -113,7 +113,7 @@ pub const Scanner = struct {
     }
 
     fn identifier(self: *Self) !void {
-        while (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '-') {
+        while (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_') {
             _ = self.advance();
         }
 

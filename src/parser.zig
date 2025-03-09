@@ -142,9 +142,29 @@ pub const Parser = struct {
             return try self.print_statement();
         } else if (self.match(&[_]TokenType{TokenType.Left_brace})) {
             return try self.block_statement();
+        } else if (self.match(&[_]TokenType{TokenType.Return})) {
+            return try self.return_statement();
         }
 
         return try self.expr_statement();
+    }
+
+    fn return_statement(self: *Self) !*Stmt {
+        const keyword = self.previous();
+        var value: ?*Expr = null;
+        if (!self.check(TokenType.Semicolon)) {
+            value = try self.expression();
+        }
+
+        _ = try self.consume(TokenType.Semicolon, ParseError.ExpectedSemicolon);
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .return_stmt = .{
+                .keyword = keyword,
+                .value = value,
+            },
+        };
+        return stmt;
     }
 
     fn for_statement(self: *Self) !*Stmt {

@@ -8,6 +8,7 @@ const Token = @import("./token.zig").Token;
 const LiteralValue = @import("./token.zig").LiteralValue;
 const runtime_error = @import("./main.zig").runtime_error;
 const Environment = @import("./environment.zig").Environment;
+const std_lib = @import("./std_lib.zig");
 
 const InterpreterError = error{
     ExpectedLeft,
@@ -20,39 +21,46 @@ pub const Interpreter = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     environment: Environment,
+    specials: Environment,
 
-    pub fn init(allocator: std.mem.Allocator) Self {
-        const globals = Environment.init(allocator);
-        // const clock_fn = struct {
-        //     fn call(_: *Interpreter, _: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
-        //         return LiteralValue{ .Float = std.time.milliTimestamp() / 1000 };
-        //     }
-        // }.call;
-        // const clock_callable = LiteralValue{
-        //     .Callable = .{
-        //         .arity = 0,
-        //         .call = clock_fn,
-        //     },
-        // };
-        // try globals.define(Token{
-        //     .line = 0,
-        //     .lexeme = "clock",
-        //     .literal = null,
-        //     .type = TokenType.Fun,
-        // }, clock_callable);
+    pub fn init(allocator: std.mem.Allocator) !Self {
+        var globals = Environment.init(allocator);
+        const clock_callable = LiteralValue{
+            .Callable = .{
+                .arity = 0,
+                .call = std_lib.clock,
+                .stmt = undefined,
+            },
+        };
+        try globals.define(Token{
+            .line = 0,
+            .lexeme = "clock",
+            .literal = null,
+            .type = TokenType.Fun,
+        }, clock_callable);
         return Self{
             .allocator = allocator,
             .environment = globals,
+            .specials = Environment.init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.environment.deinit();
+        self.specials.deinit();
     }
 
     pub fn evaluvate_stmts(self: *Self, stmts: std.ArrayList(*Stmt)) !void {
         for (stmts.items) |stmt| {
-            try self.evaluvate_stmt(stmt);
+            self.evaluvate_stmt(stmt) catch |err| {
+                switch (err) {
+                    InterpreterError.ExpectedLeft => try runtime_error(0, "Expected Left Argument."),
+                    InterpreterError.ExpectedRight => try runtime_error(0, "Expected Right Argument."),
+                    InterpreterError.ArgumentMismatch => try runtime_error(0, "Argument Mismatch"),
+                    InterpreterError.NotACallable => try runtime_error(0, "Not a Callable"),
+                    else => return err,
+                }
+            };
         }
     }
 
@@ -121,9 +129,10 @@ pub const Interpreter = struct {
             Stmt.funcStmt => {
                 const fun = struct {
                     fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
-                        const parenEnv = inter.environment;
+                        var parenEnv = inter.environment;
                         defer inter.environment = parenEnv;
                         inter.environment = Environment.init(inter.allocator);
+                        inter.environment.enclosing = &parenEnv;
                         defer inter.environment.deinit();
 
                         for (0..args.items.len) |i| {
@@ -132,6 +141,15 @@ pub const Interpreter = struct {
 
                         for (stmt_.funcStmt.body) |s| {
                             try inter.evaluvate_stmt(s);
+                            if (try inter.specials.get_no_warn(Token{
+                                .lexeme = "return",
+                                .line = 0,
+                                .literal = null,
+                                .type = TokenType.Return,
+                            })) |r| {
+                                defer _ = inter.specials.values.remove("return");
+                                return r;
+                            }
                         }
 
                         return LiteralValue{ .Nil = {} };
@@ -147,6 +165,22 @@ pub const Interpreter = struct {
                 };
 
                 try self.environment.define(stmt.funcStmt.name, callable);
+            },
+            Stmt.return_stmt => {
+                var value: LiteralValue = undefined;
+                if (stmt.return_stmt.value) |v| {
+                    value = (try self.evaluvate(v)).?;
+                } else {
+                    value = LiteralValue{
+                        .Nil = {},
+                    };
+                }
+                try self.specials.define(Token{
+                    .lexeme = "return",
+                    .line = stmt.return_stmt.keyword.line,
+                    .literal = stmt.return_stmt.keyword.literal,
+                    .type = TokenType.Return,
+                }, value);
             },
             // else => {},
         }

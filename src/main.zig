@@ -96,14 +96,14 @@ fn run_file(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const contents = try file.readToEndAlloc(allocator, file_size);
     defer allocator.free(contents);
 
-    var interpreter = Interpreter.init(allocator);
+    var interpreter = try Interpreter.init(allocator);
     defer interpreter.deinit();
     try run(contents, allocator, &interpreter);
 }
 
 fn run_promt(allocator: std.mem.Allocator) !void {
     try stdout.print("repl mode\n", .{});
-    var interpreter = Interpreter.init(allocator);
+    var interpreter = try Interpreter.init(allocator);
     defer interpreter.deinit();
     while (true) {
         try stdout.print("\n> ", .{});
