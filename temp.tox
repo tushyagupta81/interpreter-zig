@@ -1,7 +1,10 @@
-fun scope(a) {
-  print a;
-  var a = "local";
-  print a;
-}
+var a = "global";
+{
+  fun showA() {
+    print a;
+  }
 
-scope("hello");
+  showA();
+  var a = "block";
+  showA();
+}

@@ -37,6 +37,13 @@ pub const Environment = struct {
         try self.values.put(n, value);
     }
 
+    pub fn assign_at(self: *Self, distance: i32, name: Token, value: LiteralValue) !void {
+        const an = self.ancestor(distance);
+        const n = try an.allocator.dupe(u8, name.lexeme);
+        try an.to_free.append(n);
+        try an.values.put(n, value);
+    }
+
     pub fn assign(self: *Self, name: Token, value: LiteralValue) !void {
         if (self.values.contains(name.lexeme)) {
             // dupe the lexeme here cause it gets freed in the repl mode on the next line
@@ -51,6 +58,21 @@ pub const Environment = struct {
         }
         var buf: [4096]u8 = undefined;
         try runtime_error(name.line, try std.fmt.bufPrint(&buf, "Undefined variable '{s}'", .{name.lexeme}));
+    }
+
+    fn ancestor(self: *Self, distance: i32) *Self {
+        var env = self;
+        var i: i32 = 0;
+        while (i < distance) : (i += 1) {
+            env = env.enclosing.?;
+        }
+
+        return env;
+    }
+
+    pub fn get_at(self: *Self, distance: i32, name: Token) !?LiteralValue {
+        const an = self.ancestor(distance);
+        return an.values.get(name.lexeme);
     }
 
     pub fn get(self: *Self, name: Token) !?LiteralValue {

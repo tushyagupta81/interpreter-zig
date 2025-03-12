@@ -23,6 +23,7 @@ pub const Interpreter = struct {
     environment: *Environment,
     specials: *Environment,
     to_free: std.ArrayList(*Environment),
+    locals: std.AutoHashMap(*Expr, i32),
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         const globals = try allocator.create(Environment);
@@ -49,6 +50,7 @@ pub const Interpreter = struct {
             .environment = globals,
             .specials = specials,
             .to_free = std.ArrayList(*Environment).init(allocator),
+            .locals = std.AutoHashMap(*Expr, i32).init(allocator),
         };
     }
 
@@ -62,6 +64,8 @@ pub const Interpreter = struct {
             self.allocator.destroy(item);
         }
         self.to_free.deinit();
+
+        self.locals.deinit();
     }
 
     pub fn evaluvate_stmts(self: *Self, stmts: std.ArrayList(*Stmt)) !void {
@@ -174,12 +178,18 @@ pub const Interpreter = struct {
                     }
                 }.call;
 
+                // Able to do the work of the resolver(not full tho) :)
+                const env = try self.allocator.create(Environment);
+                env.* = self.environment.*;
+                try self.to_free.append(env);
+
                 const callable = LiteralValue{
                     .Callable = .{
                         .arity = stmt.funcStmt.params.items.len,
                         .call = fun,
                         .stmt = stmt,
-                        .env = self.environment,
+                        // .env = self.environment,
+                        .env = env,
                     },
                 };
 
@@ -222,10 +232,11 @@ pub const Interpreter = struct {
                 // return try self.evaluvate_binary(&literal);
             },
             Expr.variable => {
-                return try self.evaluvate_variable(expr.variable.name);
+                // return try self.evaluvate_variable(expr.variable.name);
+                return try self.look_up_variable(expr.variable.name, expr);
             },
             Expr.assign => {
-                return try self.evaluvate_assign(&expr.assign);
+                return try self.evaluvate_assign(expr);
             },
             Expr.logical => {
                 return try self.evaluvate_logical(&expr.logical);
@@ -235,6 +246,15 @@ pub const Interpreter = struct {
             },
         }
         return null;
+    }
+
+    fn look_up_variable(self: *Self, name: Token, expr: *Expr) anyerror!?LiteralValue {
+        const distance = self.locals.get(expr);
+        if (distance) |d| {
+            return self.environment.get_at(d, name);
+        } else {
+            return self.environment.get(name);
+        }
     }
 
     fn evaluvate_call(self: *Self, expr: *ExprType.callExpr) anyerror!?LiteralValue {
@@ -276,9 +296,15 @@ pub const Interpreter = struct {
         return try self.evaluvate(expr.right);
     }
 
-    fn evaluvate_assign(self: *Self, expr: *ExprType.AssignExpr) anyerror!?LiteralValue {
-        const val = try self.evaluvate(expr.value) orelse return null;
-        try self.environment.assign(expr.name, val);
+    fn evaluvate_assign(self: *Self, expr: *Expr) anyerror!?LiteralValue {
+        const val = try self.evaluvate(expr.assign.value) orelse return null;
+
+        const distance = self.locals.get(expr);
+        if (distance) |d| {
+            try self.environment.assign_at(d, expr.assign.name, val);
+        } else {
+            try self.environment.assign(expr.assign.name, val);
+        }
         return val;
     }
 
@@ -400,5 +426,9 @@ pub const Interpreter = struct {
             }
         }
         return false;
+    }
+
+    pub fn resolve(self: *Self, expr: *Expr, depth: i32) !void {
+        try self.locals.put(expr, depth);
     }
 };
