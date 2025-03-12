@@ -20,16 +20,19 @@ const InterpreterError = error{
 pub const Interpreter = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
-    environment: Environment,
-    specials: Environment,
+    environment: *Environment,
+    specials: *Environment,
+    to_free: std.ArrayList(*Environment),
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        var globals = Environment.init(allocator);
+        const globals = try allocator.create(Environment);
+        globals.* = Environment.init(allocator);
         const clock_callable = LiteralValue{
             .Callable = .{
                 .arity = 0,
                 .call = std_lib.clock,
                 .stmt = undefined,
+                .env = undefined,
             },
         };
         try globals.define(Token{
@@ -38,16 +41,27 @@ pub const Interpreter = struct {
             .literal = null,
             .type = TokenType.Fun,
         }, clock_callable);
+
+        const specials = try allocator.create(Environment);
+        specials.* = Environment.init(allocator);
         return Self{
             .allocator = allocator,
             .environment = globals,
-            .specials = Environment.init(allocator),
+            .specials = specials,
+            .to_free = std.ArrayList(*Environment).init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.environment.deinit();
+        self.allocator.destroy(self.environment);
         self.specials.deinit();
+        self.allocator.destroy(self.specials);
+        for (self.to_free.items) |item| {
+            item.deinit();
+            self.allocator.destroy(item);
+        }
+        self.to_free.deinit();
     }
 
     pub fn evaluvate_stmts(self: *Self, stmts: std.ArrayList(*Stmt)) !void {
@@ -94,13 +108,15 @@ pub const Interpreter = struct {
                 try self.environment.define(stmt.var_stmt.name, value);
             },
             Stmt.block_stmt => {
-                var previous = self.environment;
-                self.environment = Environment.init(self.allocator);
-                self.environment.enclosing = &previous;
+                const previous = self.environment;
+                const env = try self.allocator.create(Environment);
+                env.* = Environment.init(self.allocator);
+                try self.to_free.append(env);
+                self.environment = env;
+                self.environment.enclosing = previous;
                 for (stmt.block_stmt.stmts) |st| {
                     try self.evaluvate_stmt(st);
                 }
-                self.environment.deinit();
                 self.environment = previous;
             },
             Stmt.if_stmt => {
@@ -128,12 +144,14 @@ pub const Interpreter = struct {
             },
             Stmt.funcStmt => {
                 const fun = struct {
-                    fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue)) anyerror!LiteralValue {
-                        var parenEnv = inter.environment;
+                    fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue), parent: *Environment) anyerror!LiteralValue {
+                        const parenEnv = inter.environment;
                         defer inter.environment = parenEnv;
-                        inter.environment = Environment.init(inter.allocator);
-                        inter.environment.enclosing = &parenEnv;
-                        defer inter.environment.deinit();
+                        const env = try inter.allocator.create(Environment);
+                        env.* = Environment.init(inter.allocator);
+                        try inter.to_free.append(env);
+                        inter.environment = env;
+                        inter.environment.enclosing = parent;
 
                         for (0..args.items.len) |i| {
                             try inter.environment.define(stmt_.funcStmt.params.items[i], args.items[i]);
@@ -161,6 +179,7 @@ pub const Interpreter = struct {
                         .arity = stmt.funcStmt.params.items.len,
                         .call = fun,
                         .stmt = stmt,
+                        .env = self.environment,
                     },
                 };
 
@@ -242,7 +261,7 @@ pub const Interpreter = struct {
 
         const func = callee.Callable.call;
 
-        return try func(callee.Callable.stmt, self, args);
+        return try func(callee.Callable.stmt, self, args, callee.Callable.env);
     }
 
     fn evaluvate_logical(self: *Self, expr: *ExprType.LogicalExpr) anyerror!?LiteralValue {

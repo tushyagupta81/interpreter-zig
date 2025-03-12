@@ -2,7 +2,7 @@
 
 Continuation from the [interpreter-rust](https://github.com/tushyagupta81/interpreter-rust)\
 The rust borrow checker made the way of making the interpreter feel like hell
-> I will still be following [Crafting Interpreters](https://craftinginterpreters.com/) hopeful on my own this time
+> I will still be following [Crafting Interpreters](https://craftinginterpreters.com/) ~~hopeful~~ on my own this time
 
 ## Current progress
 - [x] How to read a file
@@ -23,8 +23,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [ ] compare numbers and string(Don't know what it should really do?)
         - [x] and numbers to string
         - [x] divide by 0 check
-- [ ] Statements
-    - [ ] Parts
+- [x] Statements
+    - [x] Parts
         - [x] Exprs
         - [x] print
         - [x] variables(without scope)
@@ -34,13 +34,14 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [x] loops
         - [x] Functions
             - [x] Return
-            - [ ] Local functions(can't really figure it out)
-        - [ ] ...
+            - [x] Local functions(~~can't really figure it out~~ moved all environments to the heap)
     - [ ] Challenge
         - [ ] REPL to auto detect a expr vs a statement and execute them accordingly
         - [ ] Give runtime error for variable that are declared but not initialized
         - [ ] branching statements?
         - [ ] break statement
+        - [ ] Checking number of args at runtime hits preformance
+        - [ ] Anonymous functions
 - [ ] Resolver
 - [ ] ...
 
@@ -55,11 +56,3 @@ The rust borrow checker made the way of making the interpreter feel like hell
 
 3. enironment.zig
     - [ ] get -> string concat size limit of 4096
-
-## Shifted to zig
-
-Before doing the interpreter in rust I was hesitant to chose which one and in the end choose rust\
-I enjoy rust but i after doing some complex things in it I felt like I was being held back\
-Most probabaly this is a skill issue and my way of thinking in OOP's mentality\
-
-###### P.S. I am really enjoying it rn :)

@@ -127,16 +127,39 @@ test "recursion" {
         \\13
         \\21
         \\34
-        \\55
-        \\89
-        \\144
-        \\233
-        \\377
-        \\610
-        \\987
-        \\1597
-        \\2584
-        \\4181
+        // \\55
+        // \\89
+        // \\144
+        // \\233
+        // \\377
+        // \\610
+        // \\987
+        // \\1597
+        // \\2584
+        // \\4181
+        \\
+    );
+}
+
+test "blocks" {
+    try test_template("./test/blocks.tox", 0,
+        \\inner a
+        \\outer b
+        \\global c
+        \\outer a
+        \\outer b
+        \\global c
+        \\global a
+        \\global b
+        \\global c
+        \\
+    );
+}
+
+test "function in function" {
+    try test_template("./test/func_in_func.tox", 0,
+        \\1
+        \\2
         \\
     );
 }

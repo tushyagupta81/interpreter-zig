@@ -1,6 +1,7 @@
 const std = @import("std");
 const Interpreter = @import("./interpreter.zig").Interpreter;
 const Stmt = @import("./statement.zig").Stmt;
+const Environment = @import("./environment.zig").Environment;
 
 pub const TokenType = enum {
     // Single-character tokens.
@@ -55,8 +56,9 @@ pub const TokenType = enum {
 const callableLiteral = struct {
     // name: []const u8,
     arity: usize,
-    call: *const fn (*Stmt, *Interpreter, std.ArrayList(LiteralValue)) anyerror!LiteralValue,
+    call: *const fn (*Stmt, *Interpreter, std.ArrayList(LiteralValue), *Environment) anyerror!LiteralValue,
     stmt: *Stmt,
+    env: *Environment,
 };
 
 pub const LiteralValue = union(enum) {
