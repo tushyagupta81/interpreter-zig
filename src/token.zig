@@ -2,6 +2,7 @@ const std = @import("std");
 const Interpreter = @import("./interpreter.zig").Interpreter;
 const Stmt = @import("./statement.zig").Stmt;
 const Environment = @import("./environment.zig").Environment;
+const InterpreterError = @import("./interpreter.zig").InterpreterError;
 
 pub const TokenType = enum {
     // Single-character tokens.
@@ -54,20 +55,50 @@ pub const TokenType = enum {
 };
 
 const callableLiteral = struct {
-    // name: []const u8,
+    name: []const u8,
     arity: usize,
     call: *const fn (*Stmt, *Interpreter, std.ArrayList(LiteralValue), *Environment) anyerror!LiteralValue,
     stmt: *Stmt,
     env: *Environment,
 };
 
+const Class = struct {
+    name: *Token,
+};
+
+pub const ClassInstance = struct {
+    const Self = @This();
+
+    allocator: std.mem.Allocator,
+    name: *Token,
+    fields: std.StringHashMap(LiteralValue),
+
+    pub fn init(allocator: std.mem.Allocator, name: *Token) Self {
+        return Self{
+            .allocator = allocator,
+            .name = name,
+            .fields = std.StringHashMap(LiteralValue).init(allocator),
+        };
+    }
+
+    pub fn get(self: *Self, name: Token) !LiteralValue {
+        if (self.fields.contains(name.lexeme)) {
+            return self.fields.get(name.lexeme).?;
+        }
+        return InterpreterError.UndefinedProperty;
+    }
+};
+
 pub const LiteralValue = union(enum) {
     const Self = @This();
+
     Float: f64,
     String: []u8,
     Bool: bool,
     Nil: void,
     Callable: callableLiteral,
+    Class: Class,
+    ClassInstance: ClassInstance,
 
     pub fn to_string(self: LiteralValue) ![]const u8 {
         switch (self) {
@@ -89,7 +120,18 @@ pub const LiteralValue = union(enum) {
                 }
             },
             LiteralValue.Nil => return &[_]u8{ 'N', 'i', 'l' },
-            else => return "Todo",
+            LiteralValue.Callable => {
+                var buf: [4096]u8 = undefined;
+                return try std.fmt.bufPrint(&buf, "<fn {s} {d}>", .{ self.Callable.name, self.Callable.arity });
+            },
+            LiteralValue.Class => {
+                var buf: [4096]u8 = undefined;
+                return try std.fmt.bufPrint(&buf, "<class {s}>", .{self.Class.name.lexeme});
+            },
+            LiteralValue.ClassInstance => {
+                var buf: [4096]u8 = undefined;
+                return try std.fmt.bufPrint(&buf, "{s} instance", .{self.ClassInstance.name.lexeme});
+            },
         }
     }
 };

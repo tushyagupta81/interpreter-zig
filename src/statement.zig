@@ -2,6 +2,11 @@ const std = @import("std");
 const Expr = @import("./expr.zig").Expr;
 const Token = @import("./token.zig").Token;
 
+const class_stmt = struct {
+    name: Token,
+    methods: []*Stmt,
+};
+
 const expr_stmt = struct {
     expr: *Expr,
 };
@@ -35,7 +40,7 @@ const return_stmt = struct {
     value: ?*Expr,
 };
 
-const funcStmt = struct {
+const func_stmt = struct {
     name: Token,
     params: std.ArrayList(Token),
     body: []*Stmt,
@@ -48,8 +53,9 @@ pub const Stmt = union(enum) {
     block_stmt: block_stmt,
     if_stmt: if_stmt,
     while_stmt: while_stmt,
-    funcStmt: funcStmt,
+    func_stmt: func_stmt,
     return_stmt: return_stmt,
+    class_stmt: class_stmt,
 
     pub fn to_string(self: Stmt, res: *std.ArrayList(u8)) !void {
         switch (self) {

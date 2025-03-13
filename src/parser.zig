@@ -15,6 +15,8 @@ const ParseError = error{
     ExpectedRightBrace,
     ExpectedLeftBrace,
     ExpectedFunctionName,
+    ExpectedClassName,
+    ExpectedIdentifier,
     TooManyArgs,
 };
 
@@ -69,13 +71,38 @@ pub const Parser = struct {
     }
 
     fn declaration(self: *Self) anyerror!*Stmt {
-        if (self.match(&[_]TokenType{TokenType.Fun})) {
+        if (self.match(&[_]TokenType{TokenType.Class})) {
+            return try self.class_declaration();
+        } else if (self.match(&[_]TokenType{TokenType.Fun})) {
             return try self.function("function");
         } else if (self.match(&[_]TokenType{TokenType.Var})) {
             return try self.var_declaration();
         } else {
             return try self.statement();
         }
+    }
+
+    fn class_declaration(self: *Self) anyerror!*Stmt {
+        const name = try self.consume(TokenType.Identifier, ParseError.ExpectedClassName);
+        _ = try self.consume(TokenType.Left_brace, ParseError.ExpectedLeftBrace);
+
+        var methods = std.ArrayList(*Stmt).init(self.allocator);
+        defer methods.deinit();
+        while (!self.check(TokenType.Right_brace) and !self.is_at_end()) {
+            try methods.append(try self.function("method"));
+        }
+
+        _ = try self.consume(TokenType.Right_brace, ParseError.ExpectedRightBrace);
+
+        const stmt = try self.allocator.create(Stmt);
+        stmt.* = Stmt{
+            .class_stmt = .{
+                .name = name,
+                .methods = methods.items,
+            },
+        };
+
+        return stmt;
     }
 
     fn function(self: *Self, _: []const u8) anyerror!*Stmt {
@@ -102,7 +129,7 @@ pub const Parser = struct {
         const body = try self.block_statement();
         const stmt = try self.allocator.create(Stmt);
         stmt.* = Stmt{
-            .funcStmt = .{
+            .func_stmt = .{
                 .name = name,
                 .params = params,
                 .body = body.block_stmt.stmts,
@@ -510,6 +537,16 @@ pub const Parser = struct {
         while (true) {
             if (self.match(&[_]TokenType{TokenType.Left_paren})) {
                 expr = try self.finishCall(expr);
+            } else if (self.match(&[_]TokenType{TokenType.Dot})) {
+                const name = try self.consume(TokenType.Identifier, ParseError.ExpectedIdentifier);
+                const e = try self.allocator.create(Expr);
+                e.* = Expr{
+                    .getExpr = .{
+                        .object = expr,
+                        .name = name,
+                    },
+                };
+                expr = e;
             } else {
                 break;
             }

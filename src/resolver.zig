@@ -99,9 +99,9 @@ pub const Resolver = struct {
                 try self.resolve_expr(stmt.while_stmt.condition);
                 try self.resolve_stmt(stmt.while_stmt.body);
             },
-            Stmt.funcStmt => {
-                try self.declare(stmt.funcStmt.name);
-                try self.define(stmt.funcStmt.name);
+            Stmt.func_stmt => {
+                try self.declare(stmt.func_stmt.name);
+                try self.define(stmt.func_stmt.name);
 
                 try self.resolve_function(stmt, FunctionType.Function);
             },
@@ -113,6 +113,10 @@ pub const Resolver = struct {
                 if (stmt.return_stmt.value) |val| {
                     try self.resolve_expr(val);
                 }
+            },
+            Stmt.class_stmt => {
+                try self.declare(stmt.class_stmt.name);
+                try self.define(stmt.class_stmt.name);
             },
         }
     }
@@ -159,6 +163,9 @@ pub const Resolver = struct {
                     try self.resolve_expr(arg);
                 }
             },
+            Expr.getExpr => {
+                try self.resolve_expr(expr.getExpr.object);
+            },
         }
     }
 
@@ -190,11 +197,11 @@ pub const Resolver = struct {
         self.current_function = now_func_type;
         defer self.current_function = enclosing_function_type;
         try self.begin_scope();
-        for (stmt.funcStmt.params.items) |param| {
+        for (stmt.func_stmt.params.items) |param| {
             try self.declare(param);
             try self.define(param);
         }
-        try self.resolve_stmts(stmt.funcStmt.body);
+        try self.resolve_stmts(stmt.func_stmt.body);
         try self.end_scope();
     }
 

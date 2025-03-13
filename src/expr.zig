@@ -43,6 +43,11 @@ pub const LogicalExpr = struct {
     right: *Expr,
 };
 
+pub const GetExpr = struct {
+    object: *Expr,
+    name: Token,
+};
+
 pub const Expr = union(enum) {
     const Self = @This();
 
@@ -54,6 +59,7 @@ pub const Expr = union(enum) {
     assign: AssignExpr,
     logical: LogicalExpr,
     callExpr: callExpr,
+    getExpr: GetExpr,
 
     pub fn to_string(expr: Expr, res: *std.ArrayList(u8)) !void {
         switch (expr) {
@@ -100,6 +106,7 @@ pub const Expr = union(enum) {
                     try arg.to_string(res);
                 }
             },
+            else => {},
         }
     }
 };
@@ -138,6 +145,8 @@ pub const ExprIntHashMap = std.HashMap(
                         .Bool => |boolean| h.update(std.mem.asBytes(&@intFromBool(boolean))),
                         .Float => |num| h.update(std.mem.asBytes(&num)),
                         .Callable => |callable| h.update(std.mem.asBytes(&callable.arity)),
+                        .Class => |class| h.update(std.mem.asBytes(&class.name)),
+                        .Nil => {},
                         else => {},
                     }
                 },
@@ -152,6 +161,7 @@ pub const ExprIntHashMap = std.HashMap(
                     for (call.arguments.items) |argument|
                         h.update(std.mem.asBytes(&hash(context, argument)));
                 },
+                else => {},
             }
             return h.final();
         }
@@ -180,9 +190,13 @@ pub const ExprIntHashMap = std.HashMap(
                             return false,
                         .Nil => {},
                         .Callable => {
-                            if (a.variable.name.literal.?.Callable.arity != b.variable.name.literal.?.Callable.arity) return false;
-                            if (@intFromPtr(a.variable.name.literal.?.Callable.call) != @intFromPtr(b.variable.name.literal.?.Callable.call)) return false;
+                            if (a.literal.value.Callable.arity != b.literal.value.Callable.arity) return false;
+                            if (@intFromPtr(a.literal.value.Callable.call) != @intFromPtr(b.literal.value.Callable.call)) return false;
                         },
+                        .Class => {
+                            if (!std.mem.eql(u8, a.literal.value.Class.name.lexeme, b.literal.value.Class.name.lexeme)) return false;
+                        },
+                        else => {},
                     }
                 },
                 .unary => {
@@ -205,6 +219,10 @@ pub const ExprIntHashMap = std.HashMap(
                                 if (a.variable.name.literal.?.Callable.arity != b.variable.name.literal.?.Callable.arity) return false;
                                 if (@intFromPtr(a.variable.name.literal.?.Callable.call) != @intFromPtr(b.variable.name.literal.?.Callable.call)) return false;
                             },
+                            .Class => {
+                                if (!std.mem.eql(u8, a.variable.name.literal.?.Class.name.lexeme, b.variable.name.literal.?.Class.name.lexeme)) return false;
+                            },
+                            else => {},
                         }
                     }
                     if (!std.mem.eql(u8, std.mem.asBytes(&a.variable), std.mem.asBytes(&b.variable))) return false;
@@ -222,6 +240,7 @@ pub const ExprIntHashMap = std.HashMap(
                         }
                     }
                 },
+                else => {},
             }
             return true;
         }

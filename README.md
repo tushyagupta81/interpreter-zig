@@ -53,7 +53,8 @@ The rust borrow checker made the way of making the interpreter feel like hell
         - [ ] Extend resolver to detect unused local variables
         - [ ] Look up variable using a index array instead of a hashmap
             - By sending the index and distance from the resolver
-- [ ] ...
+- [ ] Classes
+- [ ] Inheritance
 
 ## Pitfalls to fix
 

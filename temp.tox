@@ -1,14 +1,9 @@
-var a = "global";
-{
-  fun showA() {
-    a = "inside func";
+class DevonshireCream {
+  serveOn() {
+    return "Scones";
   }
-  print a;
-  showA();
-  print a;
-
-  var a = "block";
-  print a;
-  showA();
-  print a;
 }
+
+var a = DevonshireCream();
+
+print a.serveOn(); // Prints "DevonshireCream".

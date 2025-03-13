@@ -3,6 +3,7 @@ const stdout = std.io.getStdOut().writer();
 const Expr = @import("./expr.zig").Expr;
 const ExprIntHashMap = @import("./expr.zig").ExprIntHashMap;
 const Stmt = @import("./statement.zig").Stmt;
+const ClassInstance = @import("./token.zig").ClassInstance;
 const ExprType = @import("./expr.zig");
 const TokenType = @import("./token.zig").TokenType;
 const Token = @import("./token.zig").Token;
@@ -11,11 +12,12 @@ const runtime_error = @import("./main.zig").runtime_error;
 const Environment = @import("./environment.zig").Environment;
 const std_lib = @import("./std_lib.zig");
 
-const InterpreterError = error{
+pub const InterpreterError = error{
     ExpectedLeft,
     ExpectedRight,
     ArgumentMismatch,
     NotACallable,
+    UndefinedProperty,
 };
 
 pub const Interpreter = struct {
@@ -35,6 +37,7 @@ pub const Interpreter = struct {
         globals.* = Environment.init(allocator);
         const clock_callable = LiteralValue{
             .Callable = .{
+                .name = "clock",
                 .arity = 0,
                 .call = std_lib.clock,
                 .stmt = undefined,
@@ -159,7 +162,7 @@ pub const Interpreter = struct {
                     try self.evaluvate_stmt(stmt.while_stmt.body);
                 }
             },
-            Stmt.funcStmt => {
+            Stmt.func_stmt => {
                 const fun = struct {
                     fn call(stmt_: *Stmt, inter: *Interpreter, args: std.ArrayList(LiteralValue), parent: *Environment) anyerror!LiteralValue {
                         const parenEnv = inter.environment;
@@ -171,10 +174,10 @@ pub const Interpreter = struct {
                         inter.environment.enclosing = parent;
 
                         for (0..args.items.len) |i| {
-                            try inter.environment.define(stmt_.funcStmt.params.items[i], args.items[i]);
+                            try inter.environment.define(stmt_.func_stmt.params.items[i], args.items[i]);
                         }
 
-                        for (stmt_.funcStmt.body) |s| {
+                        for (stmt_.func_stmt.body) |s| {
                             try inter.evaluvate_stmt(s);
                             if (try inter.specials.get_no_warn(Token{
                                 .lexeme = "return",
@@ -198,7 +201,8 @@ pub const Interpreter = struct {
 
                 const callable = LiteralValue{
                     .Callable = .{
-                        .arity = stmt.funcStmt.params.items.len,
+                        .name = stmt.func_stmt.name.lexeme,
+                        .arity = stmt.func_stmt.params.items.len,
                         .call = fun,
                         .stmt = stmt,
                         .env = self.environment,
@@ -206,7 +210,7 @@ pub const Interpreter = struct {
                     },
                 };
 
-                try self.environment.define(stmt.funcStmt.name, callable);
+                try self.environment.define(stmt.func_stmt.name, callable);
             },
             Stmt.return_stmt => {
                 var value: LiteralValue = undefined;
@@ -224,7 +228,16 @@ pub const Interpreter = struct {
                     .type = TokenType.Return,
                 }, value);
             },
-            // else => {},
+            Stmt.class_stmt => {
+                try self.environment.define(stmt.class_stmt.name, LiteralValue{ .Nil = {} });
+                const class = LiteralValue{
+                    .Class = .{
+                        .name = &stmt.class_stmt.name,
+                    },
+                };
+
+                try self.environment.assign(stmt.class_stmt.name, class);
+            },
         }
     }
 
@@ -257,8 +270,22 @@ pub const Interpreter = struct {
             Expr.callExpr => {
                 return try self.evaluvate_call(&expr.callExpr);
             },
+            Expr.getExpr => {
+                return try self.evaluvate_get(&expr.getExpr);
+            },
         }
         return null;
+    }
+
+    fn evaluvate_get(self: *Self, expr: *ExprType.GetExpr) anyerror!?LiteralValue {
+        var obj = try self.evaluvate(expr.object);
+        if (obj) |_| {
+            if (obj.? == LiteralValue.ClassInstance) {
+                return try obj.?.ClassInstance.get(expr.name);
+            }
+        }
+
+        return InterpreterError.NotACallable;
     }
 
     fn look_up_variable(self: *Self, name: Token, expr: *Expr) anyerror!?LiteralValue {
@@ -287,21 +314,29 @@ pub const Interpreter = struct {
             try args.append((try self.evaluvate(arg)).?);
         }
 
-        if (callee != LiteralValue.Callable) {
-            try runtime_error(expr.paren.line, "Can only call funcitons and classes");
-            return InterpreterError.ArgumentMismatch;
+        // if (!(callee == LiteralValue.Callable or callee == LiteralValue.Class)) {
+        // }
+
+        if (callee == LiteralValue.Callable) {
+            if (args.items.len != callee.Callable.arity) {
+                const err = try std.fmt.allocPrint(self.allocator, "Expected {} arguments but got {}", .{ expr.arguments.items.len, args.items.len });
+                defer self.allocator.free(err);
+                try runtime_error(expr.paren.line, err);
+                return InterpreterError.NotACallable;
+            }
+
+            const func = callee.Callable.call;
+
+            return try func(callee.Callable.stmt, self, args, callee.Callable.env);
+        } else if (callee == LiteralValue.Class) {
+            const lit = LiteralValue{
+                .ClassInstance = ClassInstance.init(self.allocator, @constCast(callee.Class.name)),
+            };
+
+            return lit;
         }
-
-        if (args.items.len != callee.Callable.arity) {
-            const err = try std.fmt.allocPrint(self.allocator, "Expected {} arguments but got {}", .{ expr.arguments.items.len, args.items.len });
-            defer self.allocator.free(err);
-            try runtime_error(expr.paren.line, err);
-            return InterpreterError.NotACallable;
-        }
-
-        const func = callee.Callable.call;
-
-        return try func(callee.Callable.stmt, self, args, callee.Callable.env);
+        try runtime_error(expr.paren.line, "Can only call funcitons and classes");
+        return InterpreterError.ArgumentMismatch;
     }
 
     fn evaluvate_logical(self: *Self, expr: *ExprType.LogicalExpr) anyerror!?LiteralValue {
@@ -433,6 +468,8 @@ pub const Interpreter = struct {
             },
             LiteralValue.String => return true,
             LiteralValue.Callable => return true,
+            LiteralValue.Class => return true,
+            LiteralValue.ClassInstance => return true,
         }
     }
 
