@@ -1,6 +1,7 @@
 const std = @import("std");
 const stdout = std.io.getStdOut().writer();
 const Expr = @import("./expr.zig").Expr;
+const ExprIntHashMap = @import("./expr.zig").ExprIntHashMap;
 const Stmt = @import("./statement.zig").Stmt;
 const ExprType = @import("./expr.zig");
 const TokenType = @import("./token.zig").TokenType;
@@ -23,7 +24,10 @@ pub const Interpreter = struct {
     environment: *Environment,
     specials: *Environment,
     to_free: std.ArrayList(*Environment),
-    locals: std.AutoHashMap(*Expr, i32),
+    to_free2: std.ArrayList(std.ArrayList(u8)),
+    // locals: std.ArrayHashMap(Expr, i32, ExprContext, true),
+    // locals: std.StringHashMap(i32),
+    locals: ExprIntHashMap,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         const globals = try allocator.create(Environment);
@@ -45,12 +49,14 @@ pub const Interpreter = struct {
 
         const specials = try allocator.create(Environment);
         specials.* = Environment.init(allocator);
+
         return Self{
             .allocator = allocator,
             .environment = globals,
             .specials = specials,
             .to_free = std.ArrayList(*Environment).init(allocator),
-            .locals = std.AutoHashMap(*Expr, i32).init(allocator),
+            .to_free2 = std.ArrayList(std.ArrayList(u8)).init(allocator),
+            .locals = ExprIntHashMap.init(allocator),
         };
     }
 
@@ -64,6 +70,11 @@ pub const Interpreter = struct {
             self.allocator.destroy(item);
         }
         self.to_free.deinit();
+
+        for (self.to_free2.items) |item| {
+            item.deinit();
+        }
+        self.to_free2.deinit();
 
         self.locals.deinit();
     }
@@ -179,17 +190,17 @@ pub const Interpreter = struct {
                 }.call;
 
                 // Able to do the work of the resolver(not full tho) :)
-                const env = try self.allocator.create(Environment);
-                env.* = self.environment.*;
-                try self.to_free.append(env);
+                // const env = try self.allocator.create(Environment);
+                // env.* = self.environment.*;
+                // try self.to_free.append(env);
 
                 const callable = LiteralValue{
                     .Callable = .{
                         .arity = stmt.funcStmt.params.items.len,
                         .call = fun,
                         .stmt = stmt,
-                        // .env = self.environment,
-                        .env = env,
+                        .env = self.environment,
+                        // .env = env,
                     },
                 };
 
@@ -249,7 +260,14 @@ pub const Interpreter = struct {
     }
 
     fn look_up_variable(self: *Self, name: Token, expr: *Expr) anyerror!?LiteralValue {
+        // var res = std.ArrayList(u8).init(self.allocator);
+        // try expr.to_string(&res);
+        // try self.to_free2.append(res);
         const distance = self.locals.get(expr);
+        // var it = self.locals.iterator();
+        // while (it.next()) |v| {
+        //     std.debug.print("{s}\n", .{v.key_ptr.*});
+        // }
         if (distance) |d| {
             return self.environment.get_at(d, name);
         } else {
@@ -299,6 +317,9 @@ pub const Interpreter = struct {
     fn evaluvate_assign(self: *Self, expr: *Expr) anyerror!?LiteralValue {
         const val = try self.evaluvate(expr.assign.value) orelse return null;
 
+        // var res = std.ArrayList(u8).init(self.allocator);
+        // try expr.to_string(&res);
+        // try self.to_free2.append(res);
         const distance = self.locals.get(expr);
         if (distance) |d| {
             try self.environment.assign_at(d, expr.assign.name, val);
@@ -428,7 +449,10 @@ pub const Interpreter = struct {
         return false;
     }
 
-    pub fn resolve(self: *Self, expr: *Expr, depth: i32) !void {
+    pub fn resolve(self: *Self, expr: *Expr, depth: u64) !void {
+        // var res = std.ArrayList(u8).init(self.allocator);
+        // try expr.to_string(&res);
+        // try self.to_free2.append(res);
         try self.locals.put(expr, depth);
     }
 };

@@ -18,11 +18,10 @@ pub const Resolver = struct {
     to_free: std.ArrayList([]u8),
 
     pub fn init(allocator: std.mem.Allocator, interpreter: *Interpreter) !Self {
-        const scopes = std.ArrayList(*std.StringHashMap(bool)).init(allocator);
         return Self{
             .interpreter = interpreter,
             .allocator = allocator,
-            .scopes = scopes,
+            .scopes = std.ArrayList(*std.StringHashMap(bool)).init(allocator),
             .to_free = std.ArrayList([]u8).init(allocator),
         };
     }
@@ -142,8 +141,8 @@ pub const Resolver = struct {
     }
 
     fn resolve_local(self: *Self, expr: *Expr, name: Token) anyerror!void {
-        for (self.scopes.items, 0..) |scope, i| {
-            if (scope.contains(name.lexeme)) {
+        for (self.scopes.items, 0..) |_, i| {
+            if (self.scopes.items[i].contains(name.lexeme)) {
                 try self.interpreter.resolve(expr, @intCast(self.scopes.items.len - 1 - i));
                 return;
             }
@@ -172,7 +171,7 @@ pub const Resolver = struct {
 
     fn declare(self: *Self, name: Token) anyerror!void {
         if (self.scopes.items.len == 0) return;
-        var scope = self.scopes.getLast().*;
+        var scope = self.scopes.getLast();
         const dupe_name = try self.allocator.dupe(u8, name.lexeme);
         try self.to_free.append(dupe_name);
         try scope.put(dupe_name, false);
@@ -180,7 +179,7 @@ pub const Resolver = struct {
 
     fn define(self: *Self, name: Token) anyerror!void {
         if (self.scopes.items.len == 0) return;
-        var scope = self.scopes.getLast().*;
+        var scope = self.scopes.getLast();
         const dupe_name = try self.allocator.dupe(u8, name.lexeme);
         try self.to_free.append(dupe_name);
         try scope.put(dupe_name, true);

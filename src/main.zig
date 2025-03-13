@@ -10,7 +10,7 @@ const ExprType = @import("./expr.zig");
 const to_string = @import("./expr.zig").to_string;
 const LiteralValue = @import("./token.zig").LiteralValue;
 const Interpreter = @import("./interpreter.zig").Interpreter;
-// const Resolver = @import("./resolver.zig").Resolver;
+const Resolver = @import("./resolver.zig").Resolver;
 
 var has_err: bool = false;
 var runtime_err: bool = false;
@@ -72,9 +72,9 @@ fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !v
     //     try stdout.print("{s}\n", .{res.items});
     // }
 
-    // var resolver = try Resolver.init(allocator, interpreter);
-    // defer resolver.deinit();
-    // try resolver.resolve_stmts(stmts.items);
+    var resolver = try Resolver.init(arenaAlloc, interpreter);
+    defer resolver.deinit();
+    try resolver.resolve_stmts(stmts.items);
 
     try interpreter.evaluvate_stmts(stmts);
 

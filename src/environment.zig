@@ -37,7 +37,7 @@ pub const Environment = struct {
         try self.values.put(n, value);
     }
 
-    pub fn assign_at(self: *Self, distance: i32, name: Token, value: LiteralValue) !void {
+    pub fn assign_at(self: *Self, distance: u64, name: Token, value: LiteralValue) !void {
         const an = self.ancestor(distance);
         const n = try an.allocator.dupe(u8, name.lexeme);
         try an.to_free.append(n);
@@ -60,7 +60,7 @@ pub const Environment = struct {
         try runtime_error(name.line, try std.fmt.bufPrint(&buf, "Undefined variable '{s}'", .{name.lexeme}));
     }
 
-    fn ancestor(self: *Self, distance: i32) *Self {
+    fn ancestor(self: *Self, distance: u64) *Self {
         var env = self;
         var i: i32 = 0;
         while (i < distance) : (i += 1) {
@@ -70,7 +70,7 @@ pub const Environment = struct {
         return env;
     }
 
-    pub fn get_at(self: *Self, distance: i32, name: Token) !?LiteralValue {
+    pub fn get_at(self: *Self, distance: u64, name: Token) !?LiteralValue {
         const an = self.ancestor(distance);
         return an.values.get(name.lexeme);
     }
