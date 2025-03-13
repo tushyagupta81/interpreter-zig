@@ -326,7 +326,7 @@ pub const Interpreter = struct {
         if (distance) |d| {
             try self.environment.assign_at(d, expr.assign.name, val);
         } else {
-            try self.environment.assign(expr.assign.name, val);
+            try self.globals.assign(expr.assign.name, val);
         }
         return val;
     }

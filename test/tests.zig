@@ -164,10 +164,20 @@ test "function in function" {
     );
 }
 
-test "resolver" {
-    try test_template("./test/resolver.tox", 0,
+test "resolver get" {
+    try test_template("./test/resolver_get.tox", 0,
         \\global
         \\global
+        \\
+    );
+}
+
+test "resolver assign" {
+    try test_template("./test/resolver_assign.tox", 0,
+        \\global
+        \\inside func
+        \\block
+        \\block
         \\
     );
 }
