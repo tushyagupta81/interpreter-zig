@@ -14,6 +14,12 @@ const Resolver = @import("./resolver.zig").Resolver;
 
 var has_err: bool = false;
 var runtime_err: bool = false;
+var resolve_err: bool = false;
+
+pub fn resolve_error(name: Token, msg: []const u8) !void {
+    try stdout.print("[runtime][line {}][name {s}] Error: {s}\n", .{ name.line, name.lexeme, msg });
+    resolve_err = true;
+}
 
 pub fn base_error(line: u32, msg: []const u8) !void {
     try report(line, "", msg);
@@ -72,9 +78,14 @@ fn run(source: []u8, allocator: std.mem.Allocator, interpreter: *Interpreter) !v
     //     try stdout.print("{s}\n", .{res.items});
     // }
 
-    var resolver = try Resolver.init(arenaAlloc, interpreter);
+    var resolver = try Resolver.init(allocator, interpreter);
     defer resolver.deinit();
     try resolver.resolve_stmts(stmts.items);
+
+    if (resolve_err) {
+        resolve_err = false;
+        return;
+    }
 
     try interpreter.evaluvate_stmts(stmts);
 

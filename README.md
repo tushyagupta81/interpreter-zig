@@ -43,19 +43,24 @@ The rust borrow checker made the way of making the interpreter feel like hell
     - [ ] Challenge
         - [ ] Checking number of args at runtime hits preformance
         - [ ] Anonymous functions
-- [ ] Resolver
+- [x] Resolver
     - [x] Coping the env at the time of creation of the function
-    - [ ] For the one from the book to work need to make it so that i can HashMap Expr itself and not there pointers
+    - [x] For the one from the book to work need to make it so that I can HashMap Expr itself and not there pointers
+        - Got the tedious HashMap defination from [tusharhero](https://github.com/tusharhero/zlox/tree/master)
+        - [x] Also needed a globals list(pointed the init env 2 times)
+    - [x] Resolve time errors
+    - [ ] Challenge
+        - [ ] Extend resolver to detect unused local variables
+        - [ ] Look up variable using a index array instead of a hashmap
+            - By sending the index and distance from the resolver
 - [ ] ...
 
 ## Pitfalls to fix
 
 1. interpreter.zig
-    - [ ] evaluvate_binary -> string concat size limit of 4096
-
+    - evaluvate_binary -> string concat size limit of 4096
 2. token.zig
     - LiteralValue
-        - [ ] to_string methods size limit of 4096
-
+        - to_string methods size limit of 4096
 3. enironment.zig
-    - [ ] get -> string concat size limit of 4096
+    - get -> string concat size limit of 4096

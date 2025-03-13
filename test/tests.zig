@@ -163,3 +163,11 @@ test "function in function" {
         \\
     );
 }
+
+test "resolver" {
+    try test_template("./test/resolver.tox", 0,
+        \\global
+        \\global
+        \\
+    );
+}

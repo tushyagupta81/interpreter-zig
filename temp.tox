@@ -7,4 +7,14 @@ var a = "global";
   showA();
   var a = "block";
   showA();
+  print a;
+  {
+    fun showB() {
+      print a;
+    }
+
+    showB();
+    var a = "clock";
+    showB();
+  }
 }

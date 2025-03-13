@@ -38,10 +38,10 @@ pub const Environment = struct {
     }
 
     pub fn assign_at(self: *Self, distance: u64, name: Token, value: LiteralValue) !void {
-        const an = self.ancestor(distance);
-        const n = try an.allocator.dupe(u8, name.lexeme);
-        try an.to_free.append(n);
-        try an.values.put(n, value);
+        try self.ancestor(distance).assign(name, value);
+        // const n = try an.allocator.dupe(u8, name.lexeme);
+        // try an.to_free.append(n);
+        // try an.values.put(n, value);
     }
 
     pub fn assign(self: *Self, name: Token, value: LiteralValue) !void {
@@ -62,7 +62,7 @@ pub const Environment = struct {
 
     fn ancestor(self: *Self, distance: u64) *Self {
         var env = self;
-        var i: i32 = 0;
+        var i: u64 = 0;
         while (i < distance) : (i += 1) {
             env = env.enclosing.?;
         }
@@ -71,8 +71,7 @@ pub const Environment = struct {
     }
 
     pub fn get_at(self: *Self, distance: u64, name: Token) !?LiteralValue {
-        const an = self.ancestor(distance);
-        return an.values.get(name.lexeme);
+        return try self.ancestor(distance).get(name);
     }
 
     pub fn get(self: *Self, name: Token) !?LiteralValue {

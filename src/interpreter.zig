@@ -22,6 +22,7 @@ pub const Interpreter = struct {
     const Self = @This();
     allocator: std.mem.Allocator,
     environment: *Environment,
+    globals: *Environment,
     specials: *Environment,
     to_free: std.ArrayList(*Environment),
     to_free2: std.ArrayList(std.ArrayList(u8)),
@@ -53,6 +54,7 @@ pub const Interpreter = struct {
         return Self{
             .allocator = allocator,
             .environment = globals,
+            .globals = globals,
             .specials = specials,
             .to_free = std.ArrayList(*Environment).init(allocator),
             .to_free2 = std.ArrayList(std.ArrayList(u8)).init(allocator),
@@ -266,12 +268,12 @@ pub const Interpreter = struct {
         const distance = self.locals.get(expr);
         // var it = self.locals.iterator();
         // while (it.next()) |v| {
-        //     std.debug.print("{s}\n", .{v.key_ptr.*});
+        //     std.debug.print("{any}\n", .{v.value_ptr.*});
         // }
         if (distance) |d| {
             return self.environment.get_at(d, name);
         } else {
-            return self.environment.get(name);
+            return self.globals.get(name);
         }
     }
 

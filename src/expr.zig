@@ -104,6 +104,7 @@ pub const Expr = union(enum) {
     }
 };
 
+// Beautiful work of https://github.com/tusharhero/zlox/tree/master
 pub const ExprIntHashMap = std.HashMap(
     *Expr,
     u64,
@@ -136,6 +137,7 @@ pub const ExprIntHashMap = std.HashMap(
                         .String => |str| h.update(str),
                         .Bool => |boolean| h.update(std.mem.asBytes(&@intFromBool(boolean))),
                         .Float => |num| h.update(std.mem.asBytes(&num)),
+                        .Callable => |callable| h.update(std.mem.asBytes(&callable.arity)),
                         else => {},
                     }
                 },
@@ -176,7 +178,11 @@ pub const ExprIntHashMap = std.HashMap(
                         .Bool => if (a.literal.value.Bool != b.literal.value.Bool) return false,
                         .String => if (!std.mem.eql(u8, a.literal.value.String, b.literal.value.String))
                             return false,
-                        else => {},
+                        .Nil => {},
+                        .Callable => {
+                            if (a.variable.name.literal.?.Callable.arity != b.variable.name.literal.?.Callable.arity) return false;
+                            if (@intFromPtr(a.variable.name.literal.?.Callable.call) != @intFromPtr(b.variable.name.literal.?.Callable.call)) return false;
+                        },
                     }
                 },
                 .unary => {
@@ -194,7 +200,11 @@ pub const ExprIntHashMap = std.HashMap(
                             .Bool => if (a.variable.name.literal.?.Bool != b.variable.name.literal.?.Bool) return false,
                             .String => if (!std.mem.eql(u8, a.variable.name.literal.?.String, b.variable.name.literal.?.String))
                                 return false,
-                            else => {},
+                            .Nil => {},
+                            .Callable => {
+                                if (a.variable.name.literal.?.Callable.arity != b.variable.name.literal.?.Callable.arity) return false;
+                                if (@intFromPtr(a.variable.name.literal.?.Callable.call) != @intFromPtr(b.variable.name.literal.?.Callable.call)) return false;
+                            },
                         }
                     }
                     if (!std.mem.eql(u8, std.mem.asBytes(&a.variable), std.mem.asBytes(&b.variable))) return false;
