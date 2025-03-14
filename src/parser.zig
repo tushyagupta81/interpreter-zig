@@ -377,6 +377,16 @@ pub const Parser = struct {
                 };
                 return assign_expr;
             }
+        } else if (left.* == Expr.getExpr) {
+            const expr = try self.allocator.create(Expr);
+            const val = try self.assignment();
+            expr.* = Expr{
+                .setExpr = .{
+                    .object = left.getExpr.object,
+                    .name = left.getExpr.name,
+                    .value = val,
+                },
+            };
         }
 
         return left;

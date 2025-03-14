@@ -17,6 +17,7 @@ pub const InterpreterError = error{
     ExpectedRight,
     ArgumentMismatch,
     NotACallable,
+    NotAInstance,
     UndefinedProperty,
 };
 
@@ -28,6 +29,7 @@ pub const Interpreter = struct {
     specials: *Environment,
     to_free: std.ArrayList(*Environment),
     to_free2: std.ArrayList(std.ArrayList(u8)),
+    to_free3: std.ArrayList(*ClassInstance),
     // locals: std.ArrayHashMap(Expr, i32, ExprContext, true),
     // locals: std.StringHashMap(i32),
     locals: ExprIntHashMap,
@@ -61,6 +63,7 @@ pub const Interpreter = struct {
             .specials = specials,
             .to_free = std.ArrayList(*Environment).init(allocator),
             .to_free2 = std.ArrayList(std.ArrayList(u8)).init(allocator),
+            .to_free3 = std.ArrayList(*ClassInstance).init(allocator),
             .locals = ExprIntHashMap.init(allocator),
         };
     }
@@ -80,6 +83,11 @@ pub const Interpreter = struct {
             item.deinit();
         }
         self.to_free2.deinit();
+
+        for (self.to_free3.items) |item| {
+            item.deinit();
+        }
+        self.to_free3.deinit();
 
         self.locals.deinit();
     }
@@ -230,6 +238,12 @@ pub const Interpreter = struct {
             },
             Stmt.class_stmt => {
                 try self.environment.define(stmt.class_stmt.name, LiteralValue{ .Nil = {} });
+
+                var methods = std.StringHashMap(*Stmt).init(self.allocator);
+
+                for(stmt.class_stmt.methods) |method| {
+                }
+
                 const class = LiteralValue{
                     .Class = .{
                         .name = &stmt.class_stmt.name,
@@ -273,8 +287,25 @@ pub const Interpreter = struct {
             Expr.getExpr => {
                 return try self.evaluvate_get(&expr.getExpr);
             },
+            Expr.setExpr => {
+                return try self.evaluvate_set(&expr.setExpr);
+            },
         }
         return null;
+    }
+
+    fn evaluvate_set(self: *Self, expr: *ExprType.SetExpr) anyerror!?LiteralValue {
+        var obj = (try self.evaluvate(expr.object)).?;
+
+        if (obj != LiteralValue.ClassInstance) {
+            try runtime_error(expr.name.line, "Only instances have fields");
+            return InterpreterError.NotAInstance;
+        }
+
+        const value = (try self.evaluvate(expr.value)).?;
+        try obj.ClassInstance.set(expr.name, value);
+
+        return value;
     }
 
     fn evaluvate_get(self: *Self, expr: *ExprType.GetExpr) anyerror!?LiteralValue {
@@ -329,8 +360,10 @@ pub const Interpreter = struct {
 
             return try func(callee.Callable.stmt, self, args, callee.Callable.env);
         } else if (callee == LiteralValue.Class) {
+            var classInst = ClassInstance.init(self.allocator, @constCast(callee.Class.name));
+            try self.to_free3.append(&classInst);
             const lit = LiteralValue{
-                .ClassInstance = ClassInstance.init(self.allocator, @constCast(callee.Class.name)),
+                .ClassInstance = classInst,
             };
 
             return lit;

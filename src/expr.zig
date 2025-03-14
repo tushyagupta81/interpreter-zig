@@ -48,6 +48,12 @@ pub const GetExpr = struct {
     name: Token,
 };
 
+pub const SetExpr = struct {
+    object: *Expr,
+    name: Token,
+    value: *Expr,
+};
+
 pub const Expr = union(enum) {
     const Self = @This();
 
@@ -60,6 +66,7 @@ pub const Expr = union(enum) {
     logical: LogicalExpr,
     callExpr: callExpr,
     getExpr: GetExpr,
+    setExpr: SetExpr,
 
     pub fn to_string(expr: Expr, res: *std.ArrayList(u8)) !void {
         switch (expr) {

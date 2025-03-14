@@ -9,10 +9,7 @@ const Stmt = @import("./statement.zig").Stmt;
 const Interpreter = @import("interpreter.zig").Interpreter;
 const resolver_error = @import("./main.zig").resolve_error;
 
-const FunctionType = enum {
-    None,
-    Function,
-};
+const FunctionType = enum { None, Function, Method };
 
 pub const Resolver = struct {
     const Self = @This();
@@ -117,6 +114,11 @@ pub const Resolver = struct {
             Stmt.class_stmt => {
                 try self.declare(stmt.class_stmt.name);
                 try self.define(stmt.class_stmt.name);
+
+                for (stmt.class_stmt.methods) |method| {
+                    const declaration = FunctionType.Method;
+                    try self.resolve_function(method, declaration);
+                }
             },
         }
     }
@@ -165,6 +167,10 @@ pub const Resolver = struct {
             },
             Expr.getExpr => {
                 try self.resolve_expr(expr.getExpr.object);
+            },
+            Expr.setExpr => {
+                try self.resolve_expr(expr.setExpr.value);
+                try self.resolve_expr(expr.setExpr.object);
             },
         }
     }

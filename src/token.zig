@@ -72,13 +72,22 @@ pub const ClassInstance = struct {
     allocator: std.mem.Allocator,
     name: *Token,
     fields: std.StringHashMap(LiteralValue),
+    to_free: std.ArrayList([]u8),
 
     pub fn init(allocator: std.mem.Allocator, name: *Token) Self {
         return Self{
             .allocator = allocator,
             .name = name,
             .fields = std.StringHashMap(LiteralValue).init(allocator),
+            .to_free = std.ArrayList([]u8).init(allocator),
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.to_free.items) |item| {
+            self.allocator.free(item);
+        }
+        self.to_free.deinit();
     }
 
     pub fn get(self: *Self, name: Token) !LiteralValue {
@@ -86,6 +95,12 @@ pub const ClassInstance = struct {
             return self.fields.get(name.lexeme).?;
         }
         return InterpreterError.UndefinedProperty;
+    }
+
+    pub fn set(self: *Self, name: Token, value: LiteralValue) !void {
+        const dupe_name = try self.allocator.dupe(u8, name.lexeme);
+        try self.to_free.append(dupe_name);
+        try self.fields.put(dupe_name, value);
     }
 };
 
