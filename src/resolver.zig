@@ -205,7 +205,7 @@ pub const Resolver = struct {
     }
 
     fn end_scope(self: *Self) anyerror!void {
-        const scope = self.scopes.pop();
+        const scope = self.scopes.pop().?;
         try self.to_free2.append(scope);
     }
 
