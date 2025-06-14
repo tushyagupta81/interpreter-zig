@@ -4,6 +4,11 @@ Continuation from the [interpreter-rust](https://github.com/tushyagupta81/interp
 The rust borrow checker made the way of making the interpreter feel like hell
 > I will still be following [Crafting Interpreters](https://craftinginterpreters.com/) ~~hopeful~~ on my own this time
 
+## Working model
+
+Check out the working model at [https://tushyagupta81.github.io/interpreter-zig](https://tushyagupta81.github.io/interpreter-zig/)\
+The backend might take 1-2 min to turn back on
+
 ## Current progress
 - [x] How to read a file
 - [x] Using the gpa allocator
