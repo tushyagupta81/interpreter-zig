@@ -101,7 +101,7 @@
                     <div class="line-numbers" id="lineNumbers"></div>
                     <textarea
                         id="input"
-                        placeholder="Write your Zig code here..."
+                        placeholder="Write your LOX code here..."
                     ></textarea>
                 </div>
                 <button onclick="runCode()">Run</button>
@@ -123,22 +123,27 @@
             const resultBox = document.getElementById("result");
             const serverStatus = document.getElementById("serverStatus");
 
-            window.addEventListener("load", () => {
-                fetch(ENV.ALIVE_URL)
-                    .then((res) => res.text())
-                    .then((txt) => {
-                        serverStatus.textContent = "Server is awake ✅";
-                        console.log("Server response:", txt);
-                    })
-                    .catch((err) => {
-                        serverStatus.textContent =
-                            "Waking up server... may take a few seconds ⚙️";
-                        console.warn(
-                            "Server might be asleep or unreachable:",
-                            err,
-                        );
-                    });
-            });
+            const serverStatus = document.getElementById("serverStatus");
+
+            function checkServerStatus() {
+              fetch("https://your-repl-url.replit.dev/status")
+                .then(res => res.text())
+                .then(txt => {
+                  if (txt.trim() === "Alive") {
+                    serverStatus.textContent = "Server is awake ✅";
+                    clearInterval(pollInterval); // Stop polling
+                  } else {
+                    serverStatus.textContent = "Waiting for server... 🔄";
+                  }
+                })
+                .catch(() => {
+                  serverStatus.textContent = "Trying to wake server... ⚙️";
+                });
+            }
+            
+            // Start polling every 5 seconds until Alive
+            const pollInterval = setInterval(checkServerStatus, 5000);
+            checkServerStatus(); // Initial immediate check
 
             function updateLineNumbers() {
                 const lines = input.value.split("\n").length;
