@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Interpreter for LOX in Zig</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                margin: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            header {
+                background-color: #333;
+                color: white;
+                padding: 1rem;
+                text-align: center;
+                font-size: 1.5rem;
+            }
+            main {
+                display: flex;
+                flex: 1;
+                align-items: flex-start;
+            }
+            #editor,
+            #output {
+                flex: 1;
+                padding: 1rem;
+                box-sizing: border-box;
+                height: calc(100vh - 57px);
+            }
+            #editor {
+                background: #f0f0f0;
+                display: flex;
+                flex-direction: column;
+            }
+            #output {
+                background: #212529;
+                color: #f8f9fa;
+                white-space: pre-wrap;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+            }
+            .editor-container {
+                flex: 1;
+                display: flex;
+                border: 1px solid #ccc;
+                overflow: hidden;
+                line-height: 1.5em;
+            }
+            .line-numbers {
+                background: #e0e0e0;
+                padding: 0.5rem;
+                text-align: right;
+                user-select: none;
+                line-height: 1.5em;
+            }
+            .line-numbers span {
+                display: block;
+                height: 1.5em;
+            }
+            textarea {
+                width: 100%;
+                font-family: monospace;
+                font-size: 1rem;
+                padding: 0.5rem;
+                border: none;
+                resize: none;
+                outline: none;
+                background: transparent;
+                line-height: 1.5em;
+            }
+            button {
+                margin-top: 1rem;
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+            #result {
+                border: 1px solid #444;
+                padding: 0.5rem;
+                background: #2b2f33;
+                margin-top: 0rem;
+            }
+            .output-success h2 {
+                color: #4caf50;
+            }
+            .output-error h2 {
+                color: #f44336;
+            }
+        </style>
+    </head>
+    <body>
+        <header>Interpreter for LOX in Zig</header>
+        <main>
+            <div id="editor">
+                <h2>Code</h2>
+                <div class="editor-container">
+                    <div class="line-numbers" id="lineNumbers"></div>
+                    <textarea
+                        id="input"
+                        placeholder="Write your Zig code here..."
+                    ></textarea>
+                </div>
+                <button onclick="runCode()">Run</button>
+            </div>
+            <div id="output">
+                <h2>Output</h2>
+                <pre id="result">Output will appear here...</pre>
+                <pre id="serverStatus">
+                    Checking server status…
+                </pre>
+            </div>
+        </main>
+
+        <script src="config.js"></script>
+        <script>
+            const input = document.getElementById("input");
+            const lineNumbers = document.getElementById("lineNumbers");
+            const outputBox = document.getElementById("output");
+            const resultBox = document.getElementById("result");
+            const serverStatus = document.getElementById("serverStatus");
+
+            window.addEventListener("load", () => {
+                fetch(ENV.ALIVE_URL)
+                    .then((res) => res.text())
+                    .then((txt) => {
+                        serverStatus.textContent = "Server is awake ✅";
+                        console.log("Server response:", txt);
+                    })
+                    .catch((err) => {
+                        serverStatus.textContent =
+                            "Waking up server... may take a few seconds ⚙️";
+                        console.warn(
+                            "Server might be asleep or unreachable:",
+                            err,
+                        );
+                    });
+            });
+
+            function updateLineNumbers() {
+                const lines = input.value.split("\n").length;
+                lineNumbers.innerHTML = Array.from(
+                    { length: lines },
+                    (_, i) => `<span>${i + 1}</span>`,
+                ).join("");
+            }
+
+            async function runCode() {
+                const code = input.value;
+                localStorage.setItem("zigCode", code);
+                const res = await fetch(ENV.BACKEND_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: code,
+                });
+                const result = await res.json();
+                document.getElementById("result").textContent =
+                    (result.output || "") +
+                    (result.error ? "\n[stderr]\n" + result.error : "") +
+                    (result.exit !== 0 ? `\n[exit code ${result.exit}]` : "");
+                outputBox.classList.remove("output-success", "output-error");
+                outputBox.classList.add(
+                    result.exit === 0 ? "output-success" : "output-error",
+                );
+                setTimeout(() => {
+                    outputBox.classList.remove(
+                        "output-success",
+                        "output-error",
+                    );
+                }, 1000);
+            }
+
+            // Load from local storage
+            window.addEventListener("load", () => {
+                const saved = localStorage.getItem("zigCode");
+                if (saved) input.value = saved;
+                updateLineNumbers();
+            });
+
+            // Update line numbers on input
+            input.addEventListener("input", updateLineNumbers);
+
+            // Run with Ctrl+Enter
+            input.addEventListener("keydown", (e) => {
+                const isMac =
+                    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+                const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+                if (modifier && (e.key === "Enter" || e.key === "\r")) {
+                    e.preventDefault();
+                    runCode();
+                }
+            });
+        </script>
+    </body>
+</html>
