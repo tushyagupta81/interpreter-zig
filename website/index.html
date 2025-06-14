@@ -140,7 +140,7 @@
             }
             
             // Start polling every 5 seconds until Alive
-            const pollInterval = setInterval(checkServerStatus, 5000);
+            const pollInterval = setInterval(checkServerStatus, 10000);
             checkServerStatus(); // Initial immediate check
 
             function updateLineNumbers() {
