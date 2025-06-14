@@ -123,10 +123,8 @@
             const resultBox = document.getElementById("result");
             const serverStatus = document.getElementById("serverStatus");
 
-            const serverStatus = document.getElementById("serverStatus");
-
             function checkServerStatus() {
-              fetch("https://your-repl-url.replit.dev/status")
+              fetch(ENV.ALIVE_URL)
                 .then(res => res.text())
                 .then(txt => {
                   if (txt.trim() === "Alive") {
